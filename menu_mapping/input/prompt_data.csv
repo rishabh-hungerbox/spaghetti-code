@@ -1,0 +1,228 @@
+prompt_id,prompt
+1,"Find items whose names contain the keyword or its parts (including partial matches).
+                    Return items in JSON format with the following fields: `name`, `relevance_score`.
+
+                    - Match based on any word or part of the word in the item name.
+                    - Calculate the `relevance_score` based on the closeness of the match (from 0 to 1).
+
+                    For example:
+                    - If the keyword is ""spicy dosa"", it should return items like ""rava dosa"" with a relevance score.
+                    - If the keyword is ""pizza"", items like ""veg pizza"" should have lower than 1 relevance score (maybe 0.8 or 0.9).
+
+                    Please respond with the JSON format like this:
+                    ```json
+                    [
+                        {
+                            ""name"": <name>,
+                            ""relevance_score"": <calculated_relevance_score>
+                        },
+                        ...
+                    ]```
+                    Keyword: "
+2,"You are given a vector database containing a list of food items. These are the only valid item names that can be used in your response. Do not generate, assume, or invent any other names that are not explicitly listed in the database. 
+    Find items with matching names based on the vector database. Return JSON with  id, name, relevance_score.
+             Match full/partial words present in the database and return the matches with name and score. Score 0-1 based on match closeness.
+             The returned name should be the same as the name in the database.
+             Format:  ```json
+                [
+                    {
+                        ""id"": <id>,
+                        ""name"": <name>,
+                        ""relevance_score"": <calculated_relevance_score>
+                    },
+                    ...
+                ]```
+             Keyword: "
+3,"Based on the given context (id, food_item_name), find similar food items based on the given keyword (we can match parts or idea of the food item, including partial matches also).
+Return items in JSON format with the following fields: `id`, `name`, `relevance_score`.
+
+- Match based on any word or part of the word in the item name.
+- Calculate the `relevance_score` based on the closeness of the match (from 0 to 1).
+
+For example:
+- If the keyword is ""spicy dosa"", it should return items like ""rava dosa"".
+- If the keyword is ""pizza"", items like ""veg pizza"" should have lower than 1 relevance score (maybe 0.8 or 0.9).
+- if the keyword is ""fried chicken rice"", and exact ""ried chicken rice"" is found, relevance score should be 1.
+
+Please respond with the JSON format like this:
+```json
+[
+    {
+        ""id"": <id>,
+        ""name"": <name>,
+        ""relevance_score"": <calculated_relevance_score>
+    },
+    ...
+]```
+Keyword: "
+4,"The given document contains a list of food items with their id, name, and vector score.
+Vector score is the score of how much a food item matches with the given keyword.
+Can you review this list and assign your own relevance score to each item based on how much it matches with the given keyword ?
+You may also take the vector score into consideration.
+Relevance score should be between 0 and 1. Matching should be done by extracting the item and quantity from the keyword and doing intelligent comparison.
+Example: 'idli 2 nos', 'idli' is the item and should match with 'Idli' rather than 'Idli & Vada'.
+Extra points for matching the quantity.
+Adjectives should be given less weightage. 
+Example 'Morning Snacks' matches with 'Snacks' and does not match with 'Morning Tea'.
+Example'juice of the day' matches with 'juice' and does not match with 'lunch of the day'.
+If the keyword does not have a brand name in it, then brand names should not be considered.
+Note: giving some examples for clarification.
+'coffee' should match with 'coffee' and not 'Nescafe Cold Coffee'. But 'Nescafe Cold Coffee' should match with 'Nescafe Cold Coffee'.
+'perk' should match with 'perk' and not 'perk with nuts' or 'Cadbury Perk'.
+'vada chutney' is more similar to 'vada' than 'Idli Wada Sambhar Chutney'
+'ground nut barfi' is more similar to 'barfi' than 'Chocolate Barfi'
+Please respond with the JSON format like this and not other text:
+```json
+[
+    {
+        ""id"": <id>,
+        ""name"": <name>,
+        ""relevance_score"": <calculated_relevance_score>
+    },
+    ...
+]```
+Keyword is: "
+5,"The document contains a list of food items, each with an ID, name, and vector score. Your task is to calculate a relevance score (between 0 and 1) for each item in the list based on how much it matches a given 'keyword'. Use the following rules to guide your scoring:
+
+1. Exact Item Match Priority:
+   - Extract the item name and quantity from the keyword.
+   - Prioritize items that match the name exactly without extra or unrelated elements.  
+     Example:  
+     - Keyword: 'idli 2 nos'  
+     - Match: 'Idli - 2 Pcs' gets a higher score than 'Idly - 2 Nos & 1 No Vada'.
+
+2. Quantity Matching:
+   - Matching quantities (e.g., '2 nos') should contribute to a higher score.
+   - Missing or mismatched quantities should reduce the score.
+
+3. Additional Elements:
+   - Items with extra elements (e.g., 'vada') that are not in the keyword should be scored lower, even if the main item matches.
+   - Example:  
+     - Keyword: 'idli 2 nos'  
+     - Match: 'Idli - 2 Pcs' gets a higher score than 'Idly - 2 Nos & 1 No Vada'.
+
+4. Adjective Handling:
+   - Adjectives in the keyword (e.g., 'Morning Snacks') should match the core item (e.g., 'Snacks') and not overly specific variations (e.g., 'Morning Tea').
+
+5. Brand Names:
+   - If the keyword does not contain a brand name, ignore brand names when matching.
+
+6. Vector Score Incorporation:
+   - Use the provided vector score as a secondary consideration, but prioritize logical relevance (e.g., item name and quantity) over the vector score.
+
+Format of the Response:
+Respond only in the following JSON format with double quotes:
+```json
+[
+    {
+        'id': <id>,
+        'name': <name>,
+        'relevance_score': <calculated_relevance_score>
+    },
+    ...
+]```
+The LLM output should not contain any other text except the ```[{}]``` string [very important].
+The json output should not contain more than 7 items.
+
+The 'keyword' is "
+6,"The document contains a list of food items, each with an ID, name, and vector score. Your task is to calculate a relevance score (between 0 and 1) for each item in the list based on how much it matches a given keyword. Use the following rules to guide your scoring:
+
+### Matching Rules:
+1. Exact Item Match Priority:
+   - Extract the main elements (e.g., item names) from the keyword.
+   - Prioritize items that contain **all the main elements in the keyword** (e.g., 'idli' and 'vada') in the same sequence or close proximity.  
+   - Example:  
+     - Keyword: 'idli vada'  
+     - Match: 'idli wada' gets a higher score than 'idly curry vada'.
+
+2. Sequence Matching:
+   - Items where the order of words in the name closely matches the order in the keyword (e.g., 'idli vada') should receive a higher score than items where the words are scrambled (e.g., 'vada idli').
+
+3. Quantity Matching:
+   - Matching quantities (e.g., '2 nos') in the keyword should further increase the score.
+   - Missing or mismatched quantities should reduce the score.
+
+4. Penalty for Extra Elements:
+   - Items with additional or unrelated elements (e.g., 'idli vada curry') should be penalized, even if they match the main elements.
+
+5. Adjective Handling:
+   - Adjectives or descriptors in the keyword (e.g., 'morning snacks') should match the **core item** and not overly specific variations (e.g., 'morning tea').
+
+6. Brand Names:
+   - If the keyword does not contain a brand name, ignore brand names when matching.
+
+7. Vector Score Incorporation:
+   - Use the provided vector score to refine ranking when multiple items have similar textual relevance.
+   - Prioritize logical matches (e.g., item name and keyword overlap) over vector score alone.
+
+### Format of the Response:
+Respond only in the following JSON format with double quotes:
+```json
+[
+    {
+        'id': <id>,
+        'name': <name>,
+        'relevance_score': <calculated_relevance_score>
+    },
+    ...
+]"
+7,"The document contains a list of root food items, each with an ID, name, and vector score. Your task is to find matching items in the list based on the given 'keyword'.
+The keyword may contain delimeter '|' seperated items. If delimeter is present then you need to match each item in the keyword with the root items.
+The output must have the same number of items as the number of items in the keyword (seperated by '|').
+
+Example: 'idli | medu vada'
+You just need to match ith with 'idli' and medu vada' root food items.
+
+Prioritize broader category matching if exact item is not found like
+'Veg Darjeeling Momo' if not found then it should be mapped to 'Veg Momo'
+'Black Channa Salad' if not found then it should be mapped to 'Veg Salad' instead of 'Black Channa Sundal'
+Please don't pointlessly match items just because they sound similar or have very similar spellings.
+
+You need to find the idea of the main component of the food item instead of blind word matching.
+if the item is 'Bhindi ki burji' then map it to 'Bhindi' instead of 'Egg Burji'
+
+But if exact match is there than all good like 'muffin' going with 'muffin'.
+Please do not match 'Ground nut barfi' with 'Ground nut' as both items are very different and follow the same ideology.
+
+Please never match a veg item to a non-veg item. That is the most important rule.
+Example: 'Veg Momo' should not be mapped to 'Chicken Momo' or 'Grill Cheese Sandwich' to 'Grill Chicken Cheese Sandwich'
+. Return emplty json response in such cases if any appropriate match is not found.
+
+
+Some more ideological examples:
+If the item name is 'Aloo Paratha' then match it with 'Aloo Paratha', if 'Aloo Paratha' is not present in the list then match it with 'Paratha'
+If the item name is 'Aloo Paratha with curd' then match it with 'Aloo Paratha' and 'curd'
+if the item name is 'normal paratha' match it with 'paratha'
+if the item name is 'hot coffee' and 'hot coffee' is not present in the list, match it with 'coffee' instead of 'cold coffee'
+if the item name is 'Dosa' or 'Puloa' and 'Dosa' or 'Puloa' is not present in the list, match it with 'Dosa' or 'Pulao' exists in the list then it should be mapped to them instead of 'Masala Dosa' or 'Dal Pulao'
+if the item name is 'Tea with Milk' then it should be mapped to 'Tea' instead of 'Masala Tea'
+If the item name is 'Tandoori Cheese Sandwich' then it should be mapped to 'Cheese Sandwich' over 'Tandoori Cheese Pasta'
+if the item name is 'Murg Cutlet' then it should be mapped to 'Chicken Cutlet'
+if the item name is 'Butter Corn' then it should be mapped to 'Steamed Corn' instead of 'Butter Non'
+
+You need to find the most appropriate root items for the given keyword and match it with them.
+The output should have the same number of items as the number of items in the keyword ('|' seperated) or less (if match is not found).
+
+
+Format of the Response:
+Respond only in the following JSON format with double quotes and valid trailing commas:
+```json
+[
+    {
+        'id': <id1>,
+        'name': <name1>,
+        'relevance_score': <calculated_relevance_score>
+    },
+     {
+        'id': <id2>,
+        'name': <name2>,
+        'relevance_score': <calculated_relevance_score>
+    },
+    ...
+]```
+The LLM output should not contain any other text except the ```[{}]``` string [very important].
+
+For example if the keyword is 'Poori' then the json output should contain only 1 item.
+If many result, arrange items in the order of relevance with most relevant item at the top.
+
+The 'keyword' is "
