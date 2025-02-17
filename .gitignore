@@ -12,6 +12,7 @@ __pycache__/
 .env
 .venv
 env/
+env
 venv/ 
 
 # Vector Index and Other Databases

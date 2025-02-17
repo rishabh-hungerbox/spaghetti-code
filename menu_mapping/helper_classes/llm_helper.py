@@ -37,7 +37,7 @@ class ItemSpellCorrector:
                     """
         name = LLMHelper(self.model).execute(prompt.format(item_name=item_name))
         return MenuMappingUtility.normalize_string(name)
-    
+
 
 class ItemFormatter:
     def __init__(self, model):
