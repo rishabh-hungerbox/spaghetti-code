@@ -52,47 +52,46 @@ class MenuMapperAI:
 
         if item_data['ambiguous']:
             print("Ambiguous item, skipping...")
-            valid = False
             root_item_name = 'AMBIGUOUS ITEM DETECTED'
+            return root_item_name
         if item_data['is_mrp']:
             print("MRP item, skipping...")
-            valid = False
             root_item_name = 'MRP ITEM DETECTED'
+            return root_item_name
 
-        if valid:
-            nodes, _, _, _, _ = self.get_filtered_nodes(item_data['name'])
-            if len(nodes) == 0:
-                print("Reranker returned nothing !!!!!")
-                return 'No matching items found'
+        nodes, _, _, _, _ = self.get_filtered_nodes(item_data['name'])
+        if len(nodes) == 0:
+            print("Reranker returned nothing !!!!!")
+            return 'No matching items found'
 
-            text = "ID,Food Item Name,Vector Score\n"
-            for node in nodes:
-                text += f"{node.node.text},{node.score}\n"
-            # preparing query engine on the filtered index
-            filtered_index = VectorStoreIndex.from_documents([Document(text=text)])
-            query_engine = filtered_index.as_query_engine(embeddings_enabled=True)
+        text = "ID,Food Item Name,Vector Score\n"
+        for node in nodes:
+            text += f"{node.node.text},{node.score}\n"
+        # preparing query engine on the filtered index
+        filtered_index = VectorStoreIndex.from_documents([Document(text=text)])
+        query_engine = filtered_index.as_query_engine(embeddings_enabled=True)
 
-            response = query_engine.query(self.prompt + item_data['name'])
+        response = query_engine.query(self.prompt + item_data['name'])
 
-            print("response: ", response)
-            relevant_items = self.process_response(response)
-            root_item_name = ''
-            items_added = 0
-            max_limit = len(item_data['name'].split(' | '))
-            for item in relevant_items:
-                if items_added >= max_limit:
-                    break
-                if items_added != 0:
-                    root_item_name += " | "
-                root_item_name += item['name']
-                items_added += 1
+        print("response: ", response)
+        relevant_items = self.process_response(response)
+        root_item_name = ''
+        items_added = 0
+        max_limit = len(item_data['name'].split(' | '))
+        for item in relevant_items:
+            if items_added >= max_limit:
+                break
+            if items_added != 0:
+                root_item_name += " | "
+            root_item_name += item['name']
+            items_added += 1
 
-            print(f"Child Menu Name: {child_menu_name}\nRelevant Items:\n{json.dumps(relevant_items, indent=4)}\n")
-            print("Most Relevant Item:\n")
+        print(f"Child Menu Name: {child_menu_name}\nRelevant Items:\n{json.dumps(relevant_items, indent=4)}\n")
+        print("Most Relevant Item:\n")
         if root_item_name != '':
             print(root_item_name)
             return root_item_name
-            
+
         else:
             print("NOT FOUND")
             return 'NOT FOUND'
@@ -212,7 +211,7 @@ class MenuMapperAI:
         return final_nodes, vs_best, vs_score, llmre_best, llmre_score
 
 
-if not any("migrat" in arg for arg in sys.argv):
+if not any("runserver" in arg for arg in sys.argv):
     ai = MenuMapperAI(prompt_id=7, model="models/gemini-2.0-flash", embedding="text-embedding-3-small", similarity_top_k=10, benchmark_on=False, debug_mode=False, sampling_size=50, with_reranker=True)
 
 
