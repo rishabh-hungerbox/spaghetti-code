@@ -46,10 +46,9 @@ class ImageGenerator:
             image_path = os.path.join(IMAGE_DIR, image_name)
             image.save(image_path)
 
-            # s3_obj = S3()
-            # s3_obj.upload_public_read_file(
-            #     image_path, os.getenv('S3_BUCKET'), 'uploads/ai/' + image_name
-            # )
-            # s3_file_path = os.getenv('S3_URL') + '/uploads/ai/' + image_name
-            # return s3_file_path
-            return ''
+            s3_obj = S3()
+            s3_obj.upload_public_read_file(
+                image_path, os.getenv('S3_BUCKET'), 'uploads/ai/' + image_name
+            )
+            s3_file_path = os.getenv('S3_URL') + '/uploads/ai/' + image_name
+            return s3_file_path

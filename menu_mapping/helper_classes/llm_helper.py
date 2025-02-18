@@ -85,6 +85,8 @@ class ItemFormatter:
                     - Remove any occurrence of 'add on' or 'addon'.
                     - Preserve Brand Names: Do not remove brand names like 'Amul' or 'Domino's'.
                     - Final Output: JSON format with double quotes enclosed in ```json { }``` and the 'name' field must not contain any commas
+                    
+                    Also tell if the item is veg or non-veg.
 
 
                     Example:
@@ -93,7 +95,8 @@ class ItemFormatter:
                     "name": "Dosa | Idli",
                     "quantity_details": "Dosa (2 piece) | Idli (50 mg) [30 Rs]",
                     "ambiguous": 0,
-                    "is_mrp": 0
+                    "is_mrp": 0,
+                    "is_veg": 1
                     }```
 
                     Input: 'glazed night snack'
@@ -101,15 +104,17 @@ class ItemFormatter:
                     "name": "glazed night snack",
                     "quantity_details": "glazed night snack",
                     "ambiguous": 1,
-                    "is_mrp": 0
+                    "is_mrp": 0,
+                    "is_veg": 1
                     }```
 
-                    Input: 'veg manchurian noodle combo
+                    Input: 'chicken manchurian noodle combo
                     Output:```json{
-                    "name": "Veg Manchurian | Noodles",
+                    "name": "Chicken Manchurian | Noodles",
                     "quantity_details": "Veg Manchurian | Noodles",
                     "ambiguous": 0,
-                    "is_mrp": 0
+                    "is_mrp": 0,
+                    "is_veg": 0
                     }```
 
                     Input: '1 litre of milk 50 -/'
@@ -117,8 +122,11 @@ class ItemFormatter:
                     "name": "Milk",
                     "quantity_details": "Milk (1 l) [50 Rs]",
                     "ambiguous": 0,
-                    "is_mrp": 0
-                    }"""
+                    "is_mrp": 0,
+                    "is_veg": 1
+                    }```
+                    
+                    Please only return the output in the given format and nothing else."""
         response = LLMHelper(self.model).execute(f'{prompt}{item_name}')
         try:
             response = str(response).replace("'", '"')
@@ -147,3 +155,54 @@ class Evaluator:
                             """
         answer = LLMHelper(self.model, temperature=0).execute(prompt)
         return answer
+
+
+class NutritionFinder:
+    def __init__(self, model):
+        self.model = model
+
+    def find_nutrition(self, item_name):
+        prompt = """Given the name of a food item and quantity details, return the average nutritional details of the item.
+                    Return energy, carbohydrates, fiber, protein, fat of the item.
+                    If quantity details are not provided, return the average nutritional details of the item for a default quantity associated with the item.
+                    Like Maggi 1 packet default value is 70 g.
+                    Always return quantity in gram or milliliter.
+                    - Final Output: JSON format with double quotes enclosed in ```json { }``` and the 'name' field must not contain any commas
+
+                    Input: 'idli 3 piece'
+                    Output:```json{
+                    "quantity": "150 gram (3 piece)",
+                    "energy": "189 kcal",
+                    "carbohydrates": "37.5 g",
+                    "fiber": "1.8 g",
+                    "protein": "6 g",
+                    "fat": "0.9 g"
+                    }```
+                    
+                    Input: 'Maggi'
+                    Output:```json{
+                    "quantity": "70 g (1 packet)",
+                    "energy": "320 kcal",
+                    "carbohydrates": "41.5 g",
+                    "fiber": "1.8 g",
+                    "protein": "6.5 g",
+                    "fat": "14.5 g"
+                    }```
+                    
+                    Please only return the output in the given format and nothing else.
+                    """
+        response = LLMHelper(self.model).execute(f'{prompt}{item_name}')
+        print('Response: ', response)
+        try:
+            response = str(response).replace("'", '"')
+            print(response.strip("```json").strip("```"))
+            formated_item = json.loads(response.strip("```json").strip("```"))
+        except Exception as e:
+            print(f"Error processing response: {e}")
+            return {
+                        "name": 'LLM JSON parsing failed',
+                        "ambiguous": 1,
+                        "is_mrp": 0
+                    }
+        
+        return formated_item

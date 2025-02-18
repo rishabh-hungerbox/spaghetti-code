@@ -1,7 +1,7 @@
 import openai
 import json
 from llama_index.llms.openai import OpenAI
-from menu_mapping.helper_classes.llm_helper import ItemFormatter, ItemSpellCorrector, Evaluator
+from menu_mapping.helper_classes.llm_helper import ItemFormatter
 from llama_index.core import Settings, VectorStoreIndex, Document, StorageContext, load_index_from_storage
 import os
 from llama_index.llms.openai_like import OpenAILike
@@ -10,12 +10,12 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from dotenv import load_dotenv
 from llama_index.core.node_parser import SentenceWindowNodeParser
 import csv
-import sys
 from llama_index.core.postprocessor import LLMRerank
 from menu_mapping.helper_classes.utility import MenuMappingUtility
 from llama_index.llms.anthropic import Anthropic
+from menu_mapping.helper_classes.llm_helper import NutritionFinder
 from llama_index.llms.gemini import Gemini
-from menu_mapping.models import LLMLogs, MenuMappingPrediction
+import sys
 
 
 class MenuMapperAI:
@@ -46,55 +46,61 @@ class MenuMapperAI:
         return self.generate_response(child_menu_name)
     
     def generate_response(self, child_menu_name):
+        RETRY_COUNT = 3
+        response = ''
+        try:
+            item_data = ItemFormatter('models/gemini-2.0-flash').format(child_menu_name)
+            print(f'{item_data['name']},{item_data['quantity_details']},{item_data['ambiguous']},{item_data['is_mrp']},{item_data['is_veg']}')
+            format_result = {
+                'name': item_data['name'],
+                'quantity_details': item_data['quantity_details'],
+                'is_ambiguous': item_data['ambiguous'],
+                'is_mrp': item_data['is_mrp'],
+                'is_veg': item_data['is_veg'],
+            }
+            if item_data['ambiguous'] or item_data['is_mrp']:
+                format_result['root_items'] = []
+                return format_result
 
-        item_data = ItemFormatter('models/gemini-2.0-flash').format(child_menu_name)
-        print(f'Item Name: {child_menu_name}, Formatted Name: {item_data['name']}, Ambiguous: {item_data['ambiguous']}, Is MRP: {item_data['is_mrp']}, Quantity Details: {item_data['quantity_details']}')
+            nodes, _, _, _, _ = self.get_filtered_nodes(item_data['name'])
+            text = "ID,Food Item Name,Vector Score\n"
+            for node in nodes:
+                text += f"{node.node.text},{node.score}\n"
 
-        if item_data['ambiguous']:
-            print("Ambiguous item, skipping...")
-            root_item_name = 'AMBIGUOUS ITEM DETECTED'
-            return root_item_name
-        if item_data['is_mrp']:
-            print("MRP item, skipping...")
-            root_item_name = 'MRP ITEM DETECTED'
-            return root_item_name
+            # preparing query engine on the filtered index
+            filtered_index = VectorStoreIndex.from_documents([Document(text=text)])
+            query_engine = filtered_index.as_query_engine(embeddings_enabled=True)
 
-        nodes, _, _, _, _ = self.get_filtered_nodes(item_data['name'])
-        if len(nodes) == 0:
-            print("Reranker returned nothing !!!!!")
-            return 'No matching items found'
+            while RETRY_COUNT > 0:
+                try:
+                    response = query_engine.query(self.prompt + item_data['name'])
+                    break
+                except Exception as e:
+                    print(f"Error querying: {e}")
+                    RETRY_COUNT -= 1
+            RETRY_COUNT = 3
+            if not response:
+                raise Exception("LLM returned nothing even after retrying")
+            print("response: ", response)
+            relevant_items = self.process_response(response)
+            final_root_items = []
+            root_item_name = ''
+            items_added = 0
+            max_limit = len(item_data['name'].split(' | '))
+            for item in relevant_items:
+                if items_added >= max_limit:
+                    break
+                if items_added != 0:
+                    root_item_name += " | "
+                root_item_name += item['name']
+                final_root_items.append(item)
+                items_added += 1
+            format_result['root_items'] = final_root_items
+            format_result['root_item_name'] = root_item_name
+            return format_result
 
-        text = "ID,Food Item Name,Vector Score\n"
-        for node in nodes:
-            text += f"{node.node.text},{node.score}\n"
-        # preparing query engine on the filtered index
-        filtered_index = VectorStoreIndex.from_documents([Document(text=text)])
-        query_engine = filtered_index.as_query_engine(embeddings_enabled=True)
-
-        response = query_engine.query(self.prompt + item_data['name'])
-
-        print("response: ", response)
-        relevant_items = self.process_response(response)
-        root_item_name = ''
-        items_added = 0
-        max_limit = len(item_data['name'].split(' | '))
-        for item in relevant_items:
-            if items_added >= max_limit:
-                break
-            if items_added != 0:
-                root_item_name += " | "
-            root_item_name += item['name']
-            items_added += 1
-
-        print(f"Child Menu Name: {child_menu_name}\nRelevant Items:\n{json.dumps(relevant_items, indent=4)}\n")
-        print("Most Relevant Item:\n")
-        if root_item_name != '':
-            print(root_item_name)
-            return root_item_name
-
-        else:
-            print("NOT FOUND")
-            return 'NOT FOUND'
+        except Exception as e:
+            raise Exception(f'Error: {str(e)}')
 
     def process_response(self, response) -> list:
         try:
@@ -211,17 +217,24 @@ class MenuMapperAI:
         return final_nodes, vs_best, vs_score, llmre_best, llmre_score
 
 
-if not any("runserver" in arg for arg in sys.argv):
+if not any("migrat" in arg for arg in sys.argv):
     ai = MenuMapperAI(prompt_id=7, model="models/gemini-2.0-flash", embedding="text-embedding-3-small", similarity_top_k=10, benchmark_on=False, debug_mode=False, sampling_size=50, with_reranker=True)
 
 
 def get_master_menu_response(child_menu_name: str):
-    return ai.execute(child_menu_name)
+    # ai = MenuMapperAI(prompt_id=7, model="models/gemini-2.0-flash", embedding="text-embedding-3-small", similarity_top_k=10, benchmark_on=False, debug_mode=False, sampling_size=50, with_reranker=True)
+    nutrition_finder = NutritionFinder('models/gemini-2.0-flash')
+    data = ai.execute(child_menu_name)
+    qty_details = data['quantity_details']
+    root_items_count = len(data['root_items'])
+    if root_items_count == 0:
+        return data
+    count = 0
+    for item in qty_details.split(' | '):
+        nutrition = nutrition_finder.find_nutrition(item)
+        data['root_items'][count]['nutrition'] = nutrition
+        count += 1
+        if count == root_items_count:
+            break
+    return data
 
-
-def process_data(data, log_id):
-    if not log_id:
-        log = LLMLogs(model_name=ai.model, embedding_model=ai.embedding, prompt=ai.prompt)
-        log.save()
-        log_id = log.id
-    ai.generate_response(data, log_id)
