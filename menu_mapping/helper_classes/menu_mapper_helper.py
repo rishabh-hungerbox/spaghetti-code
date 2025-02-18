@@ -52,7 +52,8 @@ class MenuMapperAI:
             item_data = ItemFormatter('models/gemini-2.0-flash').format(child_menu_name)
             print(f'{item_data['name']},{item_data['quantity_details']},{item_data['ambiguous']},{item_data['is_mrp']},{item_data['is_veg']}')
             format_result = {
-                'name': item_data['name'],
+                'name': child_menu_name,
+                'root_item_name': None,
                 'quantity_details': item_data['quantity_details'],
                 'is_ambiguous': item_data['ambiguous'],
                 'is_mrp': item_data['is_mrp'],
