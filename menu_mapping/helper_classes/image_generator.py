@@ -29,12 +29,14 @@ class ImageGenerator:
 
         boiler_plate = "{prompt}, realistic, seperate, stock photo, restaurant, food photography, food presentation"
         # {prompt}, realistic, seperate
+        
+        s3_links = []
 
         response = client.models.generate_images(
             model='imagen-3.0-generate-002',
             prompt=boiler_plate.format(prompt=prompt),
             config=types.GenerateImagesConfig(
-                number_of_images=1,
+                number_of_images=3,
             )
         )
         for i, generated_image in enumerate(response.generated_images):
@@ -51,4 +53,5 @@ class ImageGenerator:
                 image_path, os.getenv('S3_BUCKET'), 'uploads/ai/' + image_name
             )
             s3_file_path = os.getenv('S3_URL') + '/uploads/ai/' + image_name
-            return s3_file_path
+            s3_links.append(s3_file_path)
+        return s3_links
