@@ -1,0 +1,1 @@
+from data_prediction.http_views.vendor_data_sync_view import VendorDataPredictionView

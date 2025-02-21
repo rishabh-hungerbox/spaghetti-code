@@ -8,17 +8,14 @@ from llama_index.llms.openai_like import OpenAILike
 
 
 class LLMHelper:
-    def __init__(self, model, temperature=0.3, config=None):
+    def __init__(self, model, temperature=0.3):
         if "deepseek" in model:
             # self.llm = DeepSeek(model=self.model, api_key=os.getenv('DEEP_SEEK_API_KEY'))
             self.llm = OpenAILike(model="deepseek-chat", api_base="https://api.deepseek.com/v1", api_key=os.getenv('DEEP_SEEK_API_KEY'), is_chat_model=True)
         elif "claude" in model:
             self.llm = Anthropic(model=model, api_key=os.getenv('CLAUDE_API_KEY'))
         elif "gemini" in model:
-            if not config:
-                self.llm = Gemini(model=model, api_key=os.getenv('GEMINI_API_KEY'))
-            else:
-                self.llm = Gemini(model=model, api_key=os.getenv('GEMINI_API_KEY'), generation_config=config)
+            self.llm = Gemini(model=model, api_key=os.getenv('GEMINI_API_KEY'))
         else:
             self.llm = OpenAI(model=model, temperature=temperature)
 

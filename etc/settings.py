@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    'menu_mapping'
+    'menu_mapping',
+    'data_prediction',
 ]
 
 ROOT_URLCONF = 'urls'
@@ -91,7 +92,15 @@ DATABASES = {
         'USER': os.environ.get('DB_FIN_PG_USERNAME'),
         'PASSWORD': os.environ.get('DB_FIN_PG_PASSWORD'),
         'OPTIONS': {'options': '-c search_path=public,deduction'},
-    }
+    },
+    'mysql': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.environ.get('DB_DATABASE'),
+        'HOST': os.environ.get('DB_HOST'),
+        'PORT': os.environ.get('DB_PORT'),
+        'USER': os.environ.get('DB_USERNAME'),
+        'PASSWORD': os.environ.get('DB_PASSWORD')
+    },
 }
 
 if os.getenv('APP_ENV') == 'local':
@@ -102,14 +111,22 @@ if os.getenv('APP_ENV') == 'local':
     SSH_PASSPHRASE = os.getenv('SSH_PASSPHRASE')
     private_key = paramiko.RSAKey(filename=SSH_PRIVATE_KEY, password=SSH_PASSPHRASE)
     # Set up SSH tunnel
-    tunnel = SSHTunnelForwarder(
+    tunnel_postgres = SSHTunnelForwarder(
         (SSH_HOST, SSH_PORT),
         ssh_username=SSH_USER,
         ssh_pkey=private_key,
         remote_bind_address=(os.environ.get('DB_FIN_PG_HOST'), int(os.environ.get('DB_FIN_PG_PORT'))))
-    tunnel.start()
-    DATABASES['default']['HOST'] = '127.0.0.1'
-    DATABASES['default']['PORT'] = int(tunnel.local_bind_port)
+    tunnel_mysql = SSHTunnelForwarder(
+        (SSH_HOST, SSH_PORT),
+        ssh_username=SSH_USER,
+        ssh_pkey=private_key,
+        remote_bind_address=(os.environ.get('DB_HOST'), int(os.environ.get('DB_PORT'))))
+    tunnel_postgres.start()
+    tunnel_mysql.start()
+    # DATABASES['default']['HOST'] = '127.0.0.1'
+    # DATABASES['default']['PORT'] = int(tunnel_postgres.local_bind_port)
+    DATABASES['mysql']['HOST'] = '127.0.0.1'
+    DATABASES['mysql']['PORT'] = int(tunnel_mysql.local_bind_port)
 
 LOGGING = {
     'version': 1,

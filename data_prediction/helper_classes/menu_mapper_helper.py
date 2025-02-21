@@ -218,8 +218,8 @@ class MenuMapperAI:
         return final_nodes, vs_best, vs_score, llmre_best, llmre_score
 
 
-# if not any("runserver" in arg for arg in sys.argv):
-#     ai = MenuMapperAI(prompt_id=7, model="models/gemini-2.0-flash", embedding="text-embedding-3-small", similarity_top_k=10, benchmark_on=False, debug_mode=False, sampling_size=50, with_reranker=True)
+if not any("migrat" in arg for arg in sys.argv):
+    ai = MenuMapperAI(prompt_id=7, model="models/gemini-2.0-flash", embedding="text-embedding-3-small", similarity_top_k=10, benchmark_on=False, debug_mode=False, sampling_size=50, with_reranker=True)
 
 
 def get_master_menu_response(child_menu_name: str):
