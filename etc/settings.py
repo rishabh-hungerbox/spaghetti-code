@@ -151,3 +151,58 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+
+
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django_redis.cache.RedisCache',
+#         'LOCATION': os.getenv('REDIS_CACHE_DRIVER')
+#         + '://'
+#         + os.getenv('REDIS_HOST')
+#         + ':'
+#         + os.getenv('REDIS_PORT')
+#         + '/1',
+#         'OPTIONS': {
+#             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+#             'CONNECTION_POOL_KWARGS': {'max_connections': 100, 'retry_on_timeout': True},
+#             'PASSWORD': config['redis']['REDIS_PASSWORD'] if config['redis']['REDIS_PASSWORD'] != 'null' else None,
+#         },
+#         'KEY_PREFIX': 'django',
+#     },
+#     'persistence': {
+#         'BACKEND': 'django_redis.cache.RedisCache',
+#         # config["redis"]["url"],
+#         'LOCATION': config['redis']['CACHE_DRIVER']
+#         + '://'
+#         + config['redis']['REDIS_PERSIST_HOST']
+#         + ':'
+#         + config['redis']['REDIS_PERSIST_PORT']
+#         + '/5',
+#         'OPTIONS': {
+#             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+#             'CONNECTION_POOL_KWARGS': {'max_connections': 100, 'retry_on_timeout': True},
+#             'PASSWORD': config['redis']['REDIS_PERSIST_PASSWORD']
+#             if config['redis']['REDIS_PERSIST_PASSWORD'] != 'null'
+#             else None,
+#         },
+#         'KEY_PREFIX': 'django',
+#     },
+#     'queue': {
+#         'BACKEND': 'django_redis.cache.RedisCache',
+#         'LOCATION': config['redis']['CACHE_DRIVER']
+#         + '://'
+#         + config['redis']['REDIS_QUEUE_HOST']
+#         + ':'
+#         + config['redis']['REDIS_QUEUE_PORT']
+#         + '/'
+#         + config['redis']['REDIS_QUEUE_DATABASE'],
+#         'OPTIONS': {
+#             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+#             'CONNECTION_POOL_KWARGS': {'max_connections': 100, 'retry_on_timeout': True},
+#             'PASSWORD': config['redis']['REDIS_QUEUE_PASSWORD']
+#             if config['redis']['REDIS_QUEUE_PASSWORD'] != 'null'
+#             else None,
+#         },
+#         'KEY_PREFIX': 'django',
+#     },
+# }

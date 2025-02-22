@@ -128,5 +128,6 @@ class SalesOrder(models.Model):
     cess = models.DecimalField(max_digits=7, decimal_places=2, default=0)
     parent_order_id = models.IntegerField(blank=False, null=True, default=None)
     
+    
     class Meta:
-        db_table = 'sales_order'  # This te
+        db_table = 'sales_order'  # This

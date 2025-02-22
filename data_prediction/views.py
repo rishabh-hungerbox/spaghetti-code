@@ -1,2 +1,3 @@
 from data_prediction.http_views.vendor_data_sync_view import VendorDataPredictionView
 from data_prediction.http_views.order_populator_view import OrderPopulatorView
+from data_prediction.http_views.vendor_chat_bot_view import VendorChatBotView
