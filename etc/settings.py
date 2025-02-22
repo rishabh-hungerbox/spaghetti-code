@@ -123,8 +123,8 @@ if os.getenv('APP_ENV') == 'local':
         remote_bind_address=(os.environ.get('DB_HOST'), int(os.environ.get('DB_PORT'))))
     tunnel_postgres.start()
     tunnel_mysql.start()
-    # DATABASES['default']['HOST'] = '127.0.0.1'
-    # DATABASES['default']['PORT'] = int(tunnel_postgres.local_bind_port)
+    DATABASES['default']['HOST'] = '127.0.0.1'
+    DATABASES['default']['PORT'] = int(tunnel_postgres.local_bind_port)
     DATABASES['mysql']['HOST'] = '127.0.0.1'
     DATABASES['mysql']['PORT'] = int(tunnel_mysql.local_bind_port)
 

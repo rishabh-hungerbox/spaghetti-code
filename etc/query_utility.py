@@ -13,7 +13,12 @@ class QueryUtility:
         query,
         params,
         db='default',
+        read_only=True
     ):
+        if not read_only:
+            with connections[db].cursor() as cursor:
+                cursor.execute(query, params)
+                return None
         with connections[db].cursor() as cursor:
             cursor.execute(query, params)
             query_response = QueryUtility.dict_fetch_all(cursor)
@@ -49,3 +54,4 @@ class QueryUtility:
     @staticmethod
     def format_key_as_string(key):
         return '{}'.format(key)
+

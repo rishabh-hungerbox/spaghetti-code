@@ -1,5 +1,6 @@
 import openai
 import json
+import asyncio
 from llama_index.llms.openai import OpenAI
 from menu_mapping.helper_classes.llm_helper import ItemFormatter
 from llama_index.core import Settings, VectorStoreIndex, Document, StorageContext, load_index_from_storage
@@ -9,6 +10,7 @@ from llama_index.core import QueryBundle
 from llama_index.embeddings.openai import OpenAIEmbedding
 from dotenv import load_dotenv
 from llama_index.core.node_parser import SentenceWindowNodeParser
+from etc.settings import DATABASES
 import csv
 from llama_index.core.postprocessor import LLMRerank
 from menu_mapping.helper_classes.utility import MenuMappingUtility
@@ -63,7 +65,7 @@ class MenuMapperAI:
                 format_result['root_items'] = []
                 return format_result
 
-            nodes, _, _, _, _ = self.get_filtered_nodes(item_data['name'])
+            nodes = asyncio.run(self.get_filtered_nodes(item_data['name']))
             text = "ID,Food Item Name,Vector Score\n"
             for node in nodes:
                 text += f"{node.node.text},{node.score}\n"
@@ -145,17 +147,41 @@ class MenuMapperAI:
         Settings.embed_model = OpenAIEmbedding(model=self.embedding)
         Settings.node_parser = node_parser
 
-        # Build the index
-        if not os.path.exists("./menu_mapping_index_root"):
-            print("Creating index...")
-            index = VectorStoreIndex.from_documents(documents=documents)
-            index.storage_context.persist(persist_dir="./menu_mapping_index_root")
-            print("Index created successfully!")
-        else:
+        # Build the index using pgvector
+        from llama_index.vector_stores.postgres import PGVectorStore
+
+        vector_store = PGVectorStore.from_params(
+            database=DATABASES['default']['NAME'],
+            host=DATABASES['default']['HOST'],
+            password=DATABASES['default']['PASSWORD'],
+            port=DATABASES['default']['PORT'],
+            user=DATABASES['default']['USER'],
+            table_name="root_item_vectors",
+            embed_dim=1536,  # openai embedding dimension
+            hnsw_kwargs={
+                "hnsw_m": 16,
+                "hnsw_ef_construction": 64,
+                "hnsw_ef_search": 40,
+                "hnsw_dist_method": "vector_cosine_ops",
+            },
+        )
+
+        storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+        try:
+            # Try to load existing index
             print("Loading pre-existing index...")
-            index = load_index_from_storage(
-                StorageContext.from_defaults(persist_dir="./menu_mapping_index_root"))
+            index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
             print("Pre-existing Index loaded!")
+        except Exception as e:
+            print(f"Error loading pre-existing index: {str(e)}")
+            # Create new index if loading fails
+            print("Creating new index...")
+            index = VectorStoreIndex.from_documents(
+                documents=documents,
+                storage_context=storage_context
+            )
+            print("Index created successfully!")
 
         return index
 
@@ -173,53 +199,54 @@ class MenuMapperAI:
         except Exception as e:
             raise Exception(f"Error reading prompt file: {str(e)}")
 
-    def get_filtered_nodes(self, item_name: str):
+    async def get_filtered_nodes(self, item_name: str):
         final_nodes = []
-        vs_best, vs_score, llmre_best, llmre_score = 'NULL', 0, 'NULL', 0
         if self.with_reranker:
             self.similarity_top_k = 50
         self.retriever = self.global_index.as_retriever(similarity_top_k=self.similarity_top_k)
         nodes = self.retriever.retrieve(item_name)
-        if len(nodes) > 0:
-            vs_best = nodes[0].node.text
-            vs_score = nodes[0].score
         if self.with_reranker:
-
             items = item_name.split(' | ')
-            for food in items:
-                nodes = self.retriever.retrieve(food)
-                reranker = LLMRerank(
-                    top_n=self.similarity_top_k,
-                    llm=self.llm
-                )
-                prompt = """Food Item - {food}.Given a food item (e.g., "Paneer Masala Kati Roll"), extract its main component (e.g., "Roll") and prioritize nodes that exactly match this component when finding the most relevant food item.
-                            Examples:
-
-                            "Paneer Masala Kati Roll" → Roll
-                            "Paneer Peri Peri Sandwich" → Sandwich
-                            "Bhindi ki bhurji" → Bhindi
-                            "Boiled Channa Salad" → Salad
-                            "Rose Tea" -> Tea
-                            "Dragon Juice" -> Juice"""
-                print(prompt.format(food=food))
-                filter_nodes = reranker.postprocess_nodes(
-                    nodes, QueryBundle(prompt.format(food=food))
-                )
-                print("ID,Food Item Name,Vector Score")
-                for node in filter_nodes:
-                    print(f"- {node.node.text}, {node.score}")
-                final_nodes.extend(filter_nodes)
+            tasks = [asyncio.to_thread(self.get_reranked_nodes, food) for food in items]
+            results = await asyncio.gather(*tasks)
+            for filtered_nodes in results:
+                final_nodes.extend(filtered_nodes)
         else:
             final_nodes = nodes
             print("ID,Food Item Name,Vector Score")
             for node in final_nodes:
                 print(f"- {node.node.text}, {node.score}")
+        return final_nodes
+    
+    def get_reranked_nodes(self, food: str):
+        nodes = self.retriever.retrieve(food)
+        reranker = LLMRerank(
+            top_n=self.similarity_top_k,
+            llm=self.llm
+        )
+        prompt = (
+            "Food Item - {food}.Given a food item (e.g., \"Paneer Masala Kati Roll\"), extract its main component "
+            "(e.g., \"Roll\") and prioritize nodes that exactly match this component when finding the most relevant food item.\n"
+            "Examples:\n\n"
+            "\"Paneer Masala Kati Roll\" → Roll\n"
+            "\"Paneer Peri Peri Sandwich\" → Sandwich\n"
+            "\"Bhindi ki bhurji\" → Bhindi\n"
+            "\"Boiled Channa Salad\" → Salad\n"
+            "\"Rose Tea\" -> Tea\n"
+            "\"Dragon Juice\" -> Juice"
+        )
+        formatted_prompt = prompt.format(food=food)
+        filter_nodes = reranker.postprocess_nodes(
+            nodes, QueryBundle(formatted_prompt)
+        )
+        print("ID,Food Item Name,Vector Score")
+        for node in filter_nodes:
+            print(f"- {node.node.text}, {node.score}")
+        return filter_nodes
 
-        return final_nodes, vs_best, vs_score, llmre_best, llmre_score
 
-
-# if not any("runserver" in arg for arg in sys.argv):
-#     ai = MenuMapperAI(prompt_id=7, model="models/gemini-2.0-flash", embedding="text-embedding-3-small", similarity_top_k=10, benchmark_on=False, debug_mode=False, sampling_size=50, with_reranker=True)
+if not any("migrat" in arg for arg in sys.argv):
+    ai = MenuMapperAI(prompt_id=7, model="models/gemini-2.0-flash", embedding="text-embedding-3-small", similarity_top_k=10, benchmark_on=False, debug_mode=False, sampling_size=50, with_reranker=True)
 
 
 def get_master_menu_response(child_menu_name: str):
