@@ -40,6 +40,6 @@ class OrderItems(models.Model):
     cess_pc = models.DecimalField(max_digits=4, decimal_places=2, default=None)
     user_subscription_id = models.IntegerField(null=True)
     subsidy_source = models.CharField(max_length=40, null=True)
-    
+
     class Meta:
         db_table = 'order_items'

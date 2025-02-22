@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from etc.query_utility import QueryUtility
 import json
 from data_prediction.models import SalesOrder
+from data_prediction.models import OrderItems
 
 class OrderPopulatorView(APIView):
     def get(self, request):
@@ -10,6 +11,7 @@ class OrderPopulatorView(APIView):
         vendor_id = request.GET.get('vendor_id')
         order_count = request.GET.get('order_count')
         product_id = request.GET.get('product_id')
+        product_price = request.GET.get('product_price')
         location_id = request.GET.get('location_id')
         occasion_id = request.GET.get('occasion_id')
 
@@ -39,7 +41,31 @@ class OrderPopulatorView(APIView):
             
             # Save to MySQL database
             sales_order.save(using='mysql')
+            
+            order_items = OrderItems(
+                order_id=sales_order.id,
+                product_id=product_id,
+                price=product_price,
+                qty=1,
+                created_at=created_date,
+                updated_at=created_date,
+                item_price=product_price,
+                is_free=0,
+                is_mrp=0,
+                recommendation_type='',
+                recommendation_id=0,
+                recommendation_score=0,
+                convenience_fee=0,
+                status='new',
+                estimated_delivery_time=created_date,
+                processed_time=created_date,
+                delivery_time=created_date,
+                comment='',
+                container_charge=0,
+                
+            )
+            order_items.save(using='mysql')
             print(f"Created sales order with ID: {sales_order.id}")
-
+            print(f"Created order items with ID: {order_items.order_item_id}")
         return JsonResponse({'status': 'success'})
     

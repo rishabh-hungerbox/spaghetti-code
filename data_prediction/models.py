@@ -1,2 +1,3 @@
 from data_prediction.model_classes.sales_order import SalesOrder
+from data_prediction.model_classes.order_items import OrderItems
 
