@@ -33,32 +33,41 @@ response_schema = {
 class VendorDataPredictionView(APIView):
     def get(self, request):
         vendor_id = request.GET.get('vendor_id')
+        prediction_days = request.GET.get('prediction_days')
         DATE_FORMAT = '%Y-%m-%d'
         
         # Query to fetch last 300 days of order data
         query = '''
-            SELECT 
-                so.created_date, 
-                COUNT(so.id) as order_count 
-            FROM sales_order so
-            WHERE so.created_date between '2024-01-01' and '2025-01-31'
-                AND so.vendor_id = %s
-            GROUP BY so.created_date
-            ORDER BY so.created_date;
-        '''
-        data = QueryUtility.execute_query(query, [vendor_id], db='mysql')
+            select created_date, count(*) as order_count from sales_order
+where vendor_id in (%s)
+and created_date > DATE_FORMAT(NOW() - INTERVAL 90 DAY, %s)
+group by created_date, vendor_id
+order by created_date, vendor_id asc;'''
+        data = QueryUtility.execute_query(query, [vendor_id, DATE_FORMAT], db='mysql')
 
         response = {'current_data': [], 'predicted_data': []}
 
         # Format historical data for response and create data string for prompt
-        historical_data_str = ""
+        historical_data_str = "created_date, order_count\n"
         for row in data:
             historical_data_str += f'{row["created_date"]}: {row["order_count"]}\n'
-            # response['current_data'].append({
-            #     'date': str(row['created_date']),
-            #     'order_count': row['order_count']
-            # })
+            response['current_data'].append({
+                'date': str(row['created_date']),
+                'order_count': row['order_count']
+            })
         print(historical_data_str)
+        
+        # Holiday data
+        holiday_str = '''- 2024-12-25, Christmas Day
+- 2025-01-01, New Year's Day
+- 2025-01-14, Makar Sankranti / Pongal
+- 2025-01-23, Netaji Subhas Chandra Bose Jayanti
+- 2025-01-26, Republic Day
+- 2025-02-14, Maha Shivaratri
+- 2025-03-17, Holi
+- 2025-03-21, Good Friday
+'''
+
 
         # Construct structured prompt with system role and context
         prompt = f'''You are an AI system specialized in analyzing corporate food ordering patterns and making predictions.
@@ -80,12 +89,15 @@ Business Rules:
 3. Seasonal Considerations:
    - Consider any visible seasonal patterns in the historical data
    - Account for upcoming holidays or special events
+   
+Holiday Data:
+{holiday_str}
 
 Historical Data:
 {historical_data_str}
 
 Required Analysis:
-1. Generate daily order count predictions for the next 30 days
+1. Generate daily order count predictions for the next {prediction_days} days
 2. Provide detailed reasoning for your predictions, including:
    - Weekly patterns identified in historical data
    - Any seasonal trends observed
