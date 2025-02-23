@@ -4,6 +4,7 @@ from etc.query_utility import QueryUtility
 import json
 from google import genai
 import os
+from etc.redis_fetcher import CacheHandler
 
 # Initialize genai client - ensure API key is set in environment variables
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
@@ -13,8 +14,20 @@ class VendorChatBotView(APIView):
     def get(self, request):
         vendor_id = request.GET.get('vendor_id')
         question = request.GET.get('question')
-        DATE_FORMAT = '%Y-%m-%d'
+        session_id = request.GET.get('session_id')
+        question_answer_data = ''
+        cache_data = None
         
+        if session_id:
+            cache_key = f'question_answer_chat_{session_id}'
+            cache_data = CacheHandler.get_dict_cache_data(cache_key)
+            if cache_data:
+                for data in cache_data:
+                    question_answer_data += f'System: {data["question"]}\n'
+                    question_answer_data += f'Vendor: {data["answer"]}\n'
+
+        DATE_FORMAT = '%Y-%m-%d'
+
         # Get vendor information
         vendor_query = '''select vendor_name, description from vendor where id = %s;'''
         vendor_data = QueryUtility.execute_query(vendor_query, [vendor_id], db='mysql')
@@ -120,6 +133,9 @@ Vendor: {prompt['context']['vendor_name']}
 Description: {prompt['context']['business_description']}
 Timeframe: {prompt['context']['data_timeframe']}
 
+Previous Chat History:
+{question_answer_data}
+
 Historical Sales Data:
 {prompt['context']['historical_data']}
 
@@ -133,11 +149,24 @@ Question: {prompt['question']}"""
 
         # Model name
         model_name = "models/gemini-2.0-flash"
+        
+        print(formatted_prompt)
 
         # Generate response
         result = client.models.generate_content(
             model=model_name,
             contents=formatted_prompt
         )
+        
+        if session_id:
+            current_data = {
+                    'question': question,
+                    'answer': result.text
+            }
+            if cache_data:
+                cache_data.append(current_data)
+            else:
+                cache_data = [current_data]
+            CacheHandler.set_dict_cache_data(cache_key, cache_data)
 
         return JsonResponse({'answer': result.text})
