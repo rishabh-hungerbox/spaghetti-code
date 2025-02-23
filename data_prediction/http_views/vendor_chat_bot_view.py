@@ -20,7 +20,47 @@ class VendorChatBotView(APIView):
         vendor_data = QueryUtility.execute_query(vendor_query, [vendor_id], db='mysql')
         vendor_name = vendor_data[0]['vendor_name']
         description = vendor_data[0]['description']
+
+        # Get review data
+        review_query = '''SELECT
+        r.order_items,
+        concat(r.rating, '/5') as 'rating',
+        group_concat(
+                (
+                    CASE
+                        WHEN ro.type = 'text' THEN ror.value
+                        WHEN ro.type = 'checkbox' AND ror.value in ('1', 'true') THEN ro.question
+                        WHEN ro.type = 'star' AND ror.value != '' THEN ro.type || ':' || ror.value
+                        ELSE ''
+                        END
+                    )
+                SEPARATOR '. '
+            ) AS user_comment,
+    date(r.created_at) as 'comment_date'
+    FROM review r
+             LEFT JOIN review_options_response ror ON ror.review_id = r.id
+             LEFT JOIN review_options ro ON ro.id = ror.review_option_id
+    WHERE r.vendor_id in (%s)
+    AND r.order_created_date > DATE_FORMAT(NOW() - INTERVAL 30 DAY, %s)
+    AND r.reference = 'order'
+GROUP BY r.id order by date(r.created_at), order_items;'''
+        reviews = QueryUtility.execute_query(review_query, [vendor_id, DATE_FORMAT], db='mysql')
+        review_data = ''
         
+        review_data_dict = {}
+        for row in reviews:
+            if row['comment_date'] not in review_data_dict:
+                review_data_dict[row['comment_date']] = []
+                review_data += f'\nReview Date: {row["comment_date"]}\n'
+            review_data_dict[row['comment_date']].append({
+                'order_items': row['order_items'],
+                'rating': row['rating'],
+                'user_comment': row['user_comment']
+            })
+            review_data += f'- Item: {row["order_items"]} - Rating (out of 5): {row["rating"]}'
+            if row['user_comment'] != '':
+                review_data += f'- Comment: {row["user_comment"]}\n'
+
         # Get sales data
         query = '''select so.created_date, max(vm.name) as 'menu_name', count(oi.qty) as order_count from sales_order so
                     join order_items oi on so.id = oi.order_id
@@ -57,7 +97,8 @@ Focus only on business-relevant information and avoid any off-topic discussions.
                 "vendor_name": vendor_name,
                 "business_description": description,
                 "data_timeframe": "Last 30 days of sales data",
-                "historical_data": historical_data
+                "historical_data": historical_data,
+                "review_data": review_data
             },
 
             "guidelines": """
@@ -81,6 +122,9 @@ Timeframe: {prompt['context']['data_timeframe']}
 
 Historical Sales Data:
 {prompt['context']['historical_data']}
+
+Review Data:
+{prompt['context']['review_data']}
 
 Guidelines:
 {prompt['guidelines']}
