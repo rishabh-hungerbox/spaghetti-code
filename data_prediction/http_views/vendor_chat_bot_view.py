@@ -22,9 +22,10 @@ class VendorChatBotView(APIView):
             cache_key = f'question_answer_chat_{session_id}'
             cache_data = CacheHandler.get_dict_cache_data(cache_key)
             if cache_data:
-                for data in cache_data:
-                    question_answer_data += f'System: {data["question"]}\n'
-                    question_answer_data += f'Vendor: {data["answer"]}\n'
+                if len(cache_data) < 7:
+                    for data in cache_data:
+                        question_answer_data += f'System: {data["question"]}\n'
+                        question_answer_data += f'Vendor: {data["answer"]}\n'
 
         DATE_FORMAT = '%Y-%m-%d'
 
