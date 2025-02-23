@@ -4,3 +4,4 @@ from data_prediction.http_views.vendor_chat_bot_view import VendorChatBotView
 from data_prediction.http_views.review_populator_view import ReviewPopulatorView
 from data_prediction.http_views.item_level_forecast_view import ItemLevelForecastView
 from data_prediction.http_views.sentiment_analysis_view import SentimentAnalysisView
+from data_prediction.http_views.arima_vendor_order_prediction_view import ArimaVendorDataPredictionView

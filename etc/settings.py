@@ -103,6 +103,7 @@ DATABASES = {
     },
 }
 
+
 if os.getenv('APP_ENV') == 'local':
     SSH_HOST = os.getenv('SSH_HOST')
     SSH_PORT = int(os.getenv('SSH_PORT'))
@@ -127,6 +128,12 @@ if os.getenv('APP_ENV') == 'local':
     DATABASES['default']['PORT'] = int(tunnel_postgres.local_bind_port)
     DATABASES['mysql']['HOST'] = '127.0.0.1'
     DATABASES['mysql']['PORT'] = int(tunnel_mysql.local_bind_port)
+    
+#prod
+DATABASES['mysql']['HOST'] = os.getenv('DB_HOST_PROD')
+DATABASES['mysql']['PORT'] = os.getenv('DB_PORT_PROD')
+DATABASES['mysql']['USER'] = os.getenv('DB_USERNAME_PROD')
+DATABASES['mysql']['PASSWORD'] = os.getenv('DB_PASSWORD_PROD')
 
 LOGGING = {
     'version': 1,
@@ -206,3 +213,5 @@ CACHES = {
         'KEY_PREFIX': 'django',
     },
 }
+
+

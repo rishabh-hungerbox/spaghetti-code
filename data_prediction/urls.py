@@ -10,4 +10,5 @@ urlpatterns = [
     path('review-populator', views.ReviewPopulatorView.as_view()),
     path('item-level-forecast', views.ItemLevelForecastView.as_view()),
     path('sentiment-analysis', views.SentimentAnalysisView.as_view()),
+    path('arima', views.ArimaVendorDataPredictionView.as_view())
     ]
