@@ -9,4 +9,5 @@ urlpatterns = [
     path('vendor-item-level-predictor', views.VendorDataPredictionView.as_view()),
     path('review-populator', views.ReviewPopulatorView.as_view()),
     path('item-level-forecast', views.ItemLevelForecastView.as_view()),
+    path('sentiment-analysis', views.SentimentAnalysisView.as_view()),
     ]

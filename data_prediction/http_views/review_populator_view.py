@@ -1,7 +1,6 @@
 from django.http import JsonResponse
 from rest_framework.views import APIView
 from etc.query_utility import QueryUtility
-import json
 import random
 from data_prediction.models import Review, ReviewOptions, ReviewOptionsResponse
 
