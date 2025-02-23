@@ -14,14 +14,13 @@ class OrderPopulatorView(APIView):
         product_price = request.GET.get('product_price')
         location_id = request.GET.get('location_id')
         occasion_id = request.GET.get('occasion_id')
-
-        DUMMY_USER_ID = 1374836
+        employee_id = request.GET.get('employee_id')
 
         # Use ORM to create sales orders
         for _ in range(int(order_count)):
             sales_order = SalesOrder(
                 vendor_id=vendor_id,
-                employee_id=DUMMY_USER_ID,
+                employee_id=employee_id,
                 qty=1,
                 status='new',
                 reject_message='',
