@@ -2,28 +2,49 @@ from django.http import JsonResponse
 from rest_framework.views import APIView
 from etc.query_utility import QueryUtility
 import random
+import time
+import csv
 from data_prediction.models import Review, ReviewOptions, ReviewOptionsResponse
 
 class ReviewPopulatorView(APIView):
     def get(self, request):
-        created_date = request.GET.get('created_date')
-        vendor_id = request.GET.get('vendor_id')
-        product_ids = request.GET.get('product_ids')
-        location_id = request.GET.get('location_id')
-        rating = request.GET.get('rating')
-        comment = request.GET.get('comment')
-        count = request.GET.get('count')
-
-        query = '''select id, name from vendor_menu where id in (%s);'''
-        product_data = QueryUtility.execute_query(query, [product_ids], db='mysql')
-        if len(product_data) != len(product_ids.split(',')):
-            return JsonResponse({'status': 'error', 'message': 'Invalid product ids'})
+        # created_date = request.GET.get('created_date')
+        # vendor_id = request.GET.get('vendor_id')
+        # product_ids = request.GET.get('product_ids')
+        # location_id = request.GET.get('location_id')
+        # rating = request.GET.get('rating')
+        # comment = request.GET.get('comment')
+        # count = request.GET.get('count')
         
-        product_names = [product['name'] for product in product_data]
-        product_names = ', '.join(product_names)
+        file_path = "data_prediction/input/review_data.csv"
+        with open(file_path, "r") as file:
+            reader = csv.DictReader(file)
+            rows = list(reader)
+            
+        r_count = 0
+        for row in rows:
+            r_count += 1
+            print(r_count)
+            print(row)
+            time.sleep(0.3)
+            vendor_id = row.get('vendor_id')
+            location_id = row.get('location_id')
+            product_ids = row.get('menu_id')
+            rating = int(row.get('rating'))
+            comment = row.get('comment')
+            new_date = row.get('date')
+            from datetime import datetime
+            # Convert date string to datetime object then format as YYYY-MM-DD
+            created_date = datetime.strptime(new_date, '%d %b %Y').strftime('%Y-%m-%d')
+            
+            query = '''select id, name from vendor_menu where id in (%s);'''
+            product_data = QueryUtility.execute_query(query, [product_ids], db='mysql')
+            if len(product_data) != len(product_ids.split(',')):
+                return JsonResponse({'status': 'error', 'message': 'Invalid product ids'})
+        
+            product_names = [product['name'] for product in product_data]
+            product_names = ', '.join(product_names)
 
-        # Use ORM to create sales orders
-        for _ in range(int(count)):
             reference_id = random.randint(1, 1000000000)
             review = Review(
                 provider='user',
@@ -66,6 +87,6 @@ class ReviewPopulatorView(APIView):
             print(f"Created review with ID: {review.id}")
             print(f"Created review options with ID: {review_options.id}")
             print(f"Created review options response with ID: {review_options_response.id}")
-            
+                
         return JsonResponse({'status': 'success'})
     

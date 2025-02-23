@@ -55,7 +55,7 @@ class VendorChatBotView(APIView):
              LEFT JOIN review_options_response ror ON ror.review_id = r.id
              LEFT JOIN review_options ro ON ro.id = ror.review_option_id
     WHERE r.vendor_id in (%s)
-    AND r.order_created_date > DATE_FORMAT(NOW() - INTERVAL 30 DAY, %s)
+    AND r.order_created_date > DATE_FORMAT(NOW() - INTERVAL 90 DAY, %s)
     AND r.reference = 'order'
 GROUP BY r.id order by date(r.created_at), order_items;'''
         reviews = QueryUtility.execute_query(review_query, [vendor_id, DATE_FORMAT], db='mysql')
