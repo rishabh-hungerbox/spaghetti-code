@@ -4,6 +4,8 @@ from etc.query_utility import QueryUtility
 import json
 from google import genai
 import os
+from django.core.cache import cache
+import hashlib
 
 # Initialize genai client - ensure API key is set in environment variables
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
@@ -28,6 +30,8 @@ response_schema = {
                 'required': ['item_forecast']
             }
 
+# Add after existing imports
+CACHE_TTL = 7200  # 7200 seconds = 2 hours
 
 class ItemLevelForecastView(APIView):
     def get(self, request):
@@ -80,6 +84,17 @@ class ItemLevelForecastView(APIView):
         # Model name - Use specific version if available, otherwise use base model name
         model_name = "models/gemini-2.0-flash"  # Example of a specific version - check Gemini API documentation for available versions. If not available, use "gemini-pro" or "gemini-2-pro" as appropriate, or "gemini-2-flash" as in your original code if that's the intended model.
 
+        # Generate cache key from prompt
+        cache_key = hashlib.md5(prompt.format(
+            item_info=item_info,
+            sales_data=sales_data
+        ).encode()).hexdigest()
+        
+        # Try to get cached response
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            return JsonResponse(cached_response)
+
         result = client.models.generate_content(
                     model=model_name,  # Use the deterministic model name
                     contents=prompt.format(item_info=item_info, sales_data=sales_data),
@@ -101,4 +116,7 @@ class ItemLevelForecastView(APIView):
                 'forecast_percentage': item['forecast_percentage'],
                 'reasoning': item['reasoning']
             })
+        
+        # Cache the response before returning
+        cache.set(cache_key, response, CACHE_TTL)
         return JsonResponse(response)

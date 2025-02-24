@@ -4,7 +4,10 @@ from etc.query_utility import QueryUtility
 import json
 from google import genai
 import os
+from django.core.cache import cache
+import hashlib
 
+CACHE_TTL = 7200
 # Initialize genai client - ensure API key is set in environment variables
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
@@ -146,6 +149,12 @@ Required Analysis:
 Please provide the response in the specified JSON format with order_data and reasoning.'''
 
         print(prompt)
+        cache_key = hashlib.md5(prompt.encode()).hexdigest()
+        
+        # Try to get cached results
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            return JsonResponse(cached_response)
 
         # Model configuration
         model_name = "models/gemini-2.0-flash"
@@ -192,4 +201,6 @@ Please provide the response in the specified JSON format with order_data and rea
         response['ration_data'] = list(result['ration_data'].values())
         for item in response['ration_data']:
             item['products'] = list(item['products'])
+
+        cache.set(cache_key, response, CACHE_TTL)    
         return JsonResponse(result)

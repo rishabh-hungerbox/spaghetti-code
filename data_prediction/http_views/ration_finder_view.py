@@ -5,6 +5,10 @@ import json
 from google import genai
 import os
 from data_prediction.models import IngredientsData
+from django.core.cache import cache
+import hashlib
+
+CACHE_TTL = 7200
 
 # Initialize genai client - ensure API key is set in environment variables
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
@@ -31,6 +35,14 @@ class RationFinderView(APIView):
         vendor_id = request.GET.get('vendor_id')
         prediction_days = request.GET.get('prediction_days')
         
+        # Generate cache key based on parameters
+        cache_key = hashlib.md5(f"ration_finder_{vendor_id}_{prediction_days}".encode()).hexdigest()
+        
+        # Try to get cached results first
+        cached_results = cache.get(cache_key)
+        if cached_results:
+            return JsonResponse(cached_results, safe=False)
+            
         # Query to fetch last 300 days of order data
         query = '''select name from vendor_menu where vendor_id = %s;'''
         products = QueryUtility.execute_query(query, [vendor_id], db='mysql')
@@ -85,5 +97,7 @@ class RationFinderView(APIView):
             
         query = '''select * from ingredients_data where vendor_id = %s;'''
         ingredients = QueryUtility.execute_query(query, [vendor_id], db='mysql')
-            
+
+        # Cache the results before returning
+        cache.set(cache_key, ingredients, CACHE_TTL)    
         return JsonResponse(ingredients, safe=False)

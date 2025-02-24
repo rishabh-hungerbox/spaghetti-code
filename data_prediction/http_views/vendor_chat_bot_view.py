@@ -5,7 +5,10 @@ import json
 from google import genai
 import os
 from etc.redis_fetcher import CacheHandler
+from django.core.cache import cache
+import hashlib
 
+CACHE_TTL = 7200  # 
 # Initialize genai client - ensure API key is set in environment variables
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
@@ -200,6 +203,12 @@ Question: {prompt['question']}"""
         model_name = "models/gemini-2.0-flash"
 
         print(formatted_prompt)
+        cache_key = hashlib.md5(formatted_prompt.encode()).hexdigest()
+        
+        # Try to get cached response
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            return JsonResponse(cached_response)
 
         # Generate response
         result = client.models.generate_content(
@@ -218,4 +227,5 @@ Question: {prompt['question']}"""
                 cache_data = [current_data]
             CacheHandler.set_dict_cache_data(cache_key, cache_data)
 
+        cache.set(cache_key, {'answer': result.text}, CACHE_TTL)
         return JsonResponse({'answer': result.text})

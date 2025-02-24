@@ -4,11 +4,15 @@ from etc.query_utility import QueryUtility
 import json
 from google import genai
 import os
+from django.core.cache import cache
+import hashlib
 
 
 # Initialize genai client - ensure API key is set in environment variables
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+# Cache TTL in seconds (2 hours)
+CACHE_TTL = 7200
 
 response_schema = {
     'type': 'object',
@@ -274,6 +278,22 @@ GROUP BY r.id order by date(r.created_at), order_items'''
         # Calculate sentiment score before generating response
         sentiment_score = self.calculate_sentiment_score(review_data_dict)
 
+        # Generate cache key from prompt
+        prompt_hash = hashlib.md5(prompt.format(review_data=review_data).encode()).hexdigest()
+        cache_key = f'sentiment_analysis:{prompt_hash}'
+        
+        # Try to get cached response
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            # Update dynamic fields in cached response
+            cached_response['total_reviews'] = len(reviews)
+            cached_response['sentiment_breakdown']['sentiment_score'] = sentiment_score
+            cached_response['sentiment_breakdown']['repeating_customers'] = repeating_customers
+            cached_response['sentiment_breakdown']['total_customers'] = total_customers
+            cached_response['sentiment_breakdown']['repeating_customers_percentage'] = repeat_percentage
+            cached_response['vendor_name'] = vendor_name
+            return JsonResponse(cached_response, safe=False)
+
         result = client.models.generate_content(
                     model=model_name,  # Use the deterministic model name
                     contents=prompt.format(review_data=review_data),
@@ -295,6 +315,8 @@ GROUP BY r.id order by date(r.created_at), order_items'''
         response['sentiment_breakdown']['repeating_customers_percentage'] = repeat_percentage
         response['vendor_name'] = vendor_name
         
+        # Cache the response
+        cache.set(cache_key, response, CACHE_TTL)
 
         return JsonResponse(response, safe=False)
 

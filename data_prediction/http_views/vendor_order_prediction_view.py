@@ -4,6 +4,8 @@ from etc.query_utility import QueryUtility
 import json
 from google import genai
 import os
+from django.core.cache import cache
+import hashlib
 
 
 # Initialize genai client - ensure API key is set in environment variables
@@ -28,6 +30,9 @@ response_schema = {
     },
     'required': ['order_data', 'reasoning']
 }
+
+# Add after existing imports
+CACHE_TTL = 7200  # 7200 seconds = 2 hours
 
 
 class VendorDataPredictionView(APIView):
@@ -150,6 +155,20 @@ Please provide the response in the specified JSON format with order_data and rea
 
         print(prompt)
 
+        # Generate cache key from prompt
+        cache_key = hashlib.md5(prompt.format(
+            historical_data_str=historical_data_str,
+            holiday_str=holiday_str,
+            location_str=location_str,
+            vendor_schedule_str=vendor_schedule_str,
+            prediction_days=prediction_days
+        ).encode()).hexdigest()
+        
+        # Try to get cached response
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            return JsonResponse(cached_response)
+
         # Model configuration
         model_name = "models/gemini-2.0-flash"
         
@@ -169,4 +188,7 @@ Please provide the response in the specified JSON format with order_data and rea
         )
 
         response['predicted_data'] = json.loads(result.text)
+        
+        # Cache the response before returning
+        cache.set(cache_key, response, CACHE_TTL)
         return JsonResponse(response)
