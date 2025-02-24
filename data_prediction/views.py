@@ -8,3 +8,4 @@ from data_prediction.http_views.arima_vendor_order_prediction_view import ArimaV
 from data_prediction.http_views.item_level_order_prediction_view import ItemLevelOrderPredictionView
 from data_prediction.http_views.ration_finder_view import RationFinderView
 from data_prediction.http_views.ration_prediction_view import RationPredictionView
+from data_prediction.http_views.product_forecastor_view import ProductForecastorView
