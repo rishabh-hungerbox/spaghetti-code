@@ -34,33 +34,35 @@ class VendorChatBotView(APIView):
         vendor_data = QueryUtility.execute_query(vendor_query, [vendor_id], db='mysql')
         vendor_name = vendor_data[0]['vendor_name']
         description = vendor_data[0]['description']
+        vendor_schedule_str = ''
+        
+        if 'schedule' in question.lower():
+            # vendor schedule data
+            vs_query = '''SELECT
+            CASE day_of_week
+                WHEN 0 THEN 'Sunday'
+                WHEN 1 THEN 'Monday'
+                WHEN 2 THEN 'Tuesday'
+                WHEN 3 THEN 'Wednesday'
+                WHEN 4 THEN 'Thursday'
+                WHEN 5 THEN 'Friday'
+                WHEN 6 THEN 'Saturday'
+            END AS day_of_week,
+            min(vs.start_time) as start_time, max(vs.end_time) as end_time, l.name as location_name, c.name as company_name, ct.name as city, s.name as state_name
+        FROM vendor_schedules vs
+        join location l on vs.location_id = l.id
+        join company c on l.company_id = c.id
+        join addresses a on l.address_id = a.id
+        join states s on a.state_id = s.id
+        join cities ct on a.city_id = ct.id
+        WHERE vs.vendor_id = %s AND vs.active = 1
+        group by vs.vendor_id, vs.location_id, vs.day_of_week
+        ORDER BY FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');'''
 
-        # vendor schedule data
-        vs_query = '''SELECT
-    CASE day_of_week
-        WHEN 0 THEN 'Sunday'
-        WHEN 1 THEN 'Monday'
-        WHEN 2 THEN 'Tuesday'
-        WHEN 3 THEN 'Wednesday'
-        WHEN 4 THEN 'Thursday'
-        WHEN 5 THEN 'Friday'
-        WHEN 6 THEN 'Saturday'
-    END AS day_of_week,
-    min(vs.start_time) as start_time, max(vs.end_time) as end_time, l.name as location_name, c.name as company_name, ct.name as city, s.name as state_name
-FROM vendor_schedules vs
-join location l on vs.location_id = l.id
-join company c on l.company_id = c.id
-join addresses a on l.address_id = a.id
-join states s on a.state_id = s.id
-join cities ct on a.city_id = ct.id
-WHERE vs.vendor_id = %s AND vs.active = 1
-group by vs.vendor_id, vs.location_id, vs.day_of_week
-ORDER BY FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');'''
-
-        vendor_schedule_data = QueryUtility.execute_query(vs_query, [vendor_id], db='mysql')
-        vendor_schedule_str = 'Day of the week, Start Time, End Time, Location Name, Company Name, City, State \n'
-        for row in vendor_schedule_data:
-            vendor_schedule_str += f'{row["day_of_week"]}, {row["start_time"]}, {row["end_time"]}, {row["location_name"]}, {row["company_name"]}, {row["city"]}, {row["state_name"]}\n'
+            vendor_schedule_data = QueryUtility.execute_query(vs_query, [vendor_id], db='mysql')
+            vendor_schedule_str = 'Day of the week, Start Time, End Time, Location Name, Company Name, City, State \n'
+            for row in vendor_schedule_data:
+                vendor_schedule_str += f'{row["day_of_week"]}, {row["start_time"]}, {row["end_time"]}, {row["location_name"]}, {row["company_name"]}, {row["city"]}, {row["state_name"]}\n'
 
         # Get review data
         review_query = '''SELECT

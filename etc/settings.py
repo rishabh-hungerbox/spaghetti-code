@@ -130,10 +130,10 @@ if os.getenv('APP_ENV') == 'local':
     DATABASES['mysql']['PORT'] = int(tunnel_mysql.local_bind_port)
     
 #prod
-DATABASES['mysql']['HOST'] = os.getenv('DB_HOST_PROD')
-DATABASES['mysql']['PORT'] = os.getenv('DB_PORT_PROD')
-DATABASES['mysql']['USER'] = os.getenv('DB_USERNAME_PROD')
-DATABASES['mysql']['PASSWORD'] = os.getenv('DB_PASSWORD_PROD')
+# DATABASES['mysql']['HOST'] = os.getenv('DB_HOST_PROD')
+# DATABASES['mysql']['PORT'] = os.getenv('DB_PORT_PROD')
+# DATABASES['mysql']['USER'] = os.getenv('DB_USERNAME_PROD')
+# DATABASES['mysql']['PASSWORD'] = os.getenv('DB_PASSWORD_PROD')
 
 LOGGING = {
     'version': 1,
