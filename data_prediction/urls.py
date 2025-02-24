@@ -14,5 +14,7 @@ urlpatterns = [
     path('item-level-order-prediction', views.ItemLevelOrderPredictionView.as_view()),
     path('ration-finder', views.RationFinderView.as_view()),
     path('ration-prediction', views.RationPredictionView.as_view()),
-    path('product-forecastor', views.ProductForecastorView.as_view())
+    path('product-forecastor', views.ProductForecastorView.as_view()),
+    path('vendor', views.VendorView.as_view()),
+    path('company', views.CompanyView.as_view()),
     ]

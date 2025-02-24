@@ -9,3 +9,5 @@ from data_prediction.http_views.item_level_order_prediction_view import ItemLeve
 from data_prediction.http_views.ration_finder_view import RationFinderView
 from data_prediction.http_views.ration_prediction_view import RationPredictionView
 from data_prediction.http_views.product_forecastor_view import ProductForecastorView
+from data_prediction.http_views.company_view import CompanyView
+from data_prediction.http_views.vendor_view import VendorView
