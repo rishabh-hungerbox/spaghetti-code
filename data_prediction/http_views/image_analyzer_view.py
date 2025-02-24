@@ -25,7 +25,13 @@ class ImageAnalyzerView(APIView):
         temp_path = os.path.join(temp_dir, 'downloaded_image.jpg')  # Renamed to reflect download source
 
         if not image_url:
-            return JsonResponse({'error': 'No image uploaded'}, status=400)
+            suggestion = ImageGenerator.generate_image(product_name)
+            
+            return JsonResponse({
+                'image_url': image_url,
+                'attractiveness_rating': None,
+                'suggested_images': suggestion
+            })
 
         # Download the image from the public S3 URL
         response = requests.get(image_url, stream=True)
