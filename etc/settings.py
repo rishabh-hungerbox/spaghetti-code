@@ -132,7 +132,7 @@ DATABASES = {
     },
 }
 
-
+tunnel_mysql = None
 if os.getenv('APP_ENV') == 'local':
     SSH_HOST = os.getenv('SSH_HOST')
     SSH_PORT = int(os.getenv('SSH_PORT'))
