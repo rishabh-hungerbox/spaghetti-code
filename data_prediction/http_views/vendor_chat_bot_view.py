@@ -79,7 +79,7 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
         query = '''select so.created_date, max(vm.name) as 'menu_name', count(oi.qty) as order_count from sales_order so
                     join order_items oi on so.id = oi.order_id
                     join vendor_menu vm on vm.id = oi.product_id
-                    where so.created_date > DATE_FORMAT(NOW() - INTERVAL 30 DAY, %s)
+                    where so.created_date > DATE_FORMAT(NOW() - INTERVAL 90 DAY, %s)
                     and so.vendor_id = %s
                     group by so.created_date, oi.product_id
                     order by so.created_date;'''
@@ -95,6 +95,16 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
                 'menu_name': row['menu_name'],
                 'order_count': row['order_count']
             })
+            
+        # holiday data
+        holiday_str = '''- 2024-12-25, Christmas Day
+- 2025-01-01, New Year's Day
+- 2025-01-14, Makar Sankranti / Pongal
+- 2025-01-23, Netaji Subhas Chandra Bose Jayanti
+- 2025-01-26, Republic Day
+- 2025-02-14, Maha Shivaratri
+- 2025-03-17, Holi
+- 2025-03-21, Good Friday'''
 
         for date, items in order_date_data.items():
             historical_data += f'\nDate: {date}\n'
@@ -104,13 +114,16 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
         # Structured prompt with clear sections
         prompt = {
             "system_role": """You are an AI assistant dedicated to helping vendors understand their business performance. 
-Your role is to analyze sales data and provide insights that can help improve their business. 
+The vendors are onboarded on a platform called 'Hungerbox' which is used for ordering food in corporate canteens.
+Therefore sales are high on tuesday, wednesday and thursday, lower on monday and friday and lowest on saturday and sunday.
+Sales are also low on public holidays because people don't come to office on public holidays.
+Your role is to analyze sales data and provide insights that can help improve their business.
 Focus only on business-relevant information and avoid any off-topic discussions.""",
             
             "context": {
                 "vendor_name": vendor_name,
                 "business_description": description,
-                "data_timeframe": "Last 30 days of sales data",
+                "holiday_data": holiday_str,
                 "historical_data": historical_data,
                 "review_data": review_data
             },
@@ -132,7 +145,9 @@ Focus only on business-relevant information and avoid any off-topic discussions.
 Business Context:
 Vendor: {prompt['context']['vendor_name']}
 Description: {prompt['context']['business_description']}
-Timeframe: {prompt['context']['data_timeframe']}
+
+Holiday Data:
+{prompt['context']['holiday_data']}
 
 Previous Chat History:
 {question_answer_data}
