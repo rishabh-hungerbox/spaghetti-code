@@ -35,7 +35,7 @@ class VendorDataPredictionView(APIView):
         vendor_id = request.GET.get('vendor_id')
         prediction_days = request.GET.get('prediction_days')
         DATE_FORMAT = '%Y-%m-%d'
-        
+
         # Query to fetch last 300 days of order data
         query = '''
             select created_date, count(*) as order_count from sales_order
@@ -56,26 +56,26 @@ order by created_date, vendor_id asc;'''
                 'order_count': row['order_count']
             })
             
-            vs_query = '''SELECT
-                        CASE day_of_week
-                            WHEN 0 THEN 'Sunday'
-                            WHEN 1 THEN 'Monday'
-                            WHEN 2 THEN 'Tuesday'
-                            WHEN 3 THEN 'Wednesday'
-                            WHEN 4 THEN 'Thursday'
-                            WHEN 5 THEN 'Friday'
-                            WHEN 6 THEN 'Saturday'
-                        END AS day_of_week,
-                        COUNT(*) AS schedules
-                    FROM vendor_schedules
-                    WHERE vendor_id = %s AND active = 1
-                    GROUP BY day_of_week
-                    ORDER BY FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');'''
-                    
-            vendor_schedule_data = QueryUtility.execute_query(vs_query, [vendor_id], db='mysql')
-            vendor_schedule_str = 'Day of the week, Schedule Count \n'
-            for row in vendor_schedule_data:
-                vendor_schedule_str += f'{row["day_of_week"]}: {row["schedules"]}\n'
+        vs_query = '''SELECT
+                    CASE day_of_week
+                        WHEN 0 THEN 'Sunday'
+                        WHEN 1 THEN 'Monday'
+                        WHEN 2 THEN 'Tuesday'
+                        WHEN 3 THEN 'Wednesday'
+                        WHEN 4 THEN 'Thursday'
+                        WHEN 5 THEN 'Friday'
+                        WHEN 6 THEN 'Saturday'
+                    END AS day_of_week,
+                    COUNT(*) AS schedules
+                FROM vendor_schedules
+                WHERE vendor_id = %s AND active = 1
+                GROUP BY day_of_week
+                ORDER BY FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');'''
+                
+        vendor_schedule_data = QueryUtility.execute_query(vs_query, [vendor_id], db='mysql')
+        vendor_schedule_str = 'Day of the week, Schedule Count \n'
+        for row in vendor_schedule_data:
+            vendor_schedule_str += f'{row["day_of_week"]}: {row["schedules"]}\n'
         
         # Holiday data
         holiday_str = ''' date, holiday, region, weightage

@@ -33,7 +33,7 @@ response_schema = {
 class RationPredictionView(APIView):
     def get(self, request):
         vendor_id = request.GET.get('vendor_id')
-        prediction_days = 7
+        prediction_days = request.GET.get('prediction_days', 7)
         DATE_FORMAT = '%Y-%m-%d'
         
         ration_query = '''select * from ingredients_data where vendor_id = %s;'''
@@ -68,15 +68,37 @@ order by created_date, product_name asc;'''
             })
         print(historical_data_str)
         
+        vs_query = '''SELECT
+                    CASE day_of_week
+                        WHEN 0 THEN 'Sunday'
+                        WHEN 1 THEN 'Monday'
+                        WHEN 2 THEN 'Tuesday'
+                        WHEN 3 THEN 'Wednesday'
+                        WHEN 4 THEN 'Thursday'
+                        WHEN 5 THEN 'Friday'
+                        WHEN 6 THEN 'Saturday'
+                    END AS day_of_week,
+                    COUNT(*) AS schedules
+                FROM vendor_schedules
+                WHERE vendor_id = %s AND active = 1
+                GROUP BY day_of_week
+                ORDER BY FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');'''
+                
+        vendor_schedule_data = QueryUtility.execute_query(vs_query, [vendor_id], db='mysql')
+        vendor_schedule_str = 'Day of the week, Schedule Count \n'
+        for row in vendor_schedule_data:
+            vendor_schedule_str += f'{row["day_of_week"]}: {row["schedules"]}\n'
+        
         # Holiday data
-        holiday_str = '''- 2024-12-25, Christmas Day
-- 2025-01-01, New Year's Day
-- 2025-01-14, Makar Sankranti / Pongal
-- 2025-01-23, Netaji Subhas Chandra Bose Jayanti
-- 2025-01-26, Republic Day
-- 2025-02-14, Maha Shivaratri
-- 2025-03-17, Holi
-- 2025-03-21, Good Friday
+        holiday_str = ''' date, holiday, region, weightage
+- 2024-12-25, Christmas Day, India, 10
+- 2025-01-01, New Year's Day, India, 10
+- 2025-01-14, Makar Sankranti / Pongal, India, 8
+- 2025-01-26, Republic Day, India, 10
+- 2025-02-26, Maha Shivaratri, India, 9
+- 2025-03-14, Holi, India, 9
+- 2023-03-30, Ugadi/ Godi Padva, India, 7
+- 2023-03-31, Eid, India, 5
 '''
 
 
@@ -101,8 +123,11 @@ Business Rules:
    - Consider any visible seasonal patterns in the historical data
    - Account for upcoming holidays or special events
    
-Holiday Data:
+Holiday Data with weightage of holiday, high weightage means more impact on order count:
 {holiday_str}
+
+Vendor Schedule Data, Day of week on which schedule do not exist will not have orders:
+{vendor_schedule_str}
 
 Historical Data:
 {historical_data_str}
@@ -142,7 +167,8 @@ Please provide the response in the specified JSON format with order_data and rea
 
         response['predicted_data'] = json.loads(result.text)['order_data']
         result = {
-            'ration_data': {},
+            'predicted_data' : response['predicted_data'],
+            'ration_data': {}
         }
         for item in response['predicted_data']:
             order_count = item['order_count']
