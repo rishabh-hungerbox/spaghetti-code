@@ -16,4 +16,5 @@ urlpatterns = [
     path('vendor', views.VendorView.as_view()),
     path('company', views.CompanyView.as_view()),
     path('product-daily-forecastor', views.ProductDailyForecastorView.as_view()),
+    path('image-analyzer', views.ImageAnalyzerView.as_view()),
     ]

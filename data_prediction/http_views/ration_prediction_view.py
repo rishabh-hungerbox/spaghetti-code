@@ -104,7 +104,6 @@ order by created_date, product_name asc;'''
 - 2023-03-31, Eid, India, 5
 '''
 
-
         # Construct structured prompt with system role and context
         prompt = f'''You are an AI system specialized in analyzing corporate food ordering patterns and making predictions.
 

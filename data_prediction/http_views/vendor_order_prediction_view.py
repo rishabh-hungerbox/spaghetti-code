@@ -151,6 +151,7 @@ Required Analysis:
    - Historical weekly patterns
    - Typical day-of-week variations
    - Seasonal trends if present
+4. Don't talk about holiday weightag
 
 Please provide the response in the specified JSON format with order_data and reasoning.'''
 

@@ -5,6 +5,7 @@ import re
 from llama_index.core import Document
 import json
 from jsonschema import validate
+from etc.query_utility import QueryUtility
 
 
 class MenuMappingUtility:
@@ -84,3 +85,13 @@ class MenuMappingUtility:
                 file.write(doc.text + "\n")
 
         return documents, item_id_map
+    
+    @staticmethod
+    def get_product_image_url(product_id):
+        query = '''select folder,file_name from image_mappings where reference_type = 'menu' and reference_id = %s'''
+        result = QueryUtility.execute_query(query, [product_id], db='mysql')
+        if len(result) == 0:
+            return None
+        folder = result[0]['folder']
+        file_name = result[0]['file_name']
+        return 'https://' + os.getenv('S3_DOMAIN') + '/' + os.getenv('S3_BUCKET') + '/' + 'resize_images' + '/' + folder + '/original_' + file_name

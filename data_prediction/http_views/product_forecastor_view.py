@@ -22,7 +22,7 @@ feedback_schema = {
             }
         },
         'suggestions': {
-            'type': 'array', 
+            'type': 'array',
             'items': {
                 'type': 'object',
                 'properties': {
