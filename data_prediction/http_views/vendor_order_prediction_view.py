@@ -97,7 +97,10 @@ join states s on a.state_id = s.id
 join hungerbox.cities c on a.city_id = c.id
 where v.id = %s and l.active = 1 and vl.active = 1 group by c.id, s.id;'''
         location_data = QueryUtility.execute_query(query_location, [vendor_id], db='mysql')
-        location_str = f'City: {location_data[0]["city_name"]}, State: {location_data[0]["state_name"]}'
+        if len(location_data) > 0:
+            location_str = f'City: {location_data[0]["city_name"]}, State: {location_data[0]["state_name"]}'
+        else:
+            location_str = ''
 
         # Construct structured prompt with system role and context
         prompt = f'''You are an AI system specialized in analyzing corporate food ordering patterns and making predictions.
