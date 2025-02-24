@@ -94,7 +94,7 @@ class ItemLevelForecastView(APIView):
         cached_response = cache.get(cache_key)
         if cached_response:
             import time
-            time.sleep(0.5)
+            time.sleep(0.3)
             return JsonResponse(cached_response)
 
         result = client.models.generate_content(

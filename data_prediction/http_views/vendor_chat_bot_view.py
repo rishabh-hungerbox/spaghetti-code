@@ -209,7 +209,7 @@ Question: {prompt['question']}"""
         cached_response = cache.get(cache_key)
         if cached_response:
             import time
-            time.sleep(0.5)
+            time.sleep(0.3)
             return JsonResponse(cached_response)
 
         # Generate response

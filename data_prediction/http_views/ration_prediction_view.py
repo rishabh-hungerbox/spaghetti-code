@@ -155,7 +155,7 @@ Please provide the response in the specified JSON format with order_data and rea
         cached_response = cache.get(cache_key)
         if cached_response:
             import time
-            time.sleep(0.5)
+            time.sleep(0.3)
             return JsonResponse(cached_response)
 
         # Model configuration
