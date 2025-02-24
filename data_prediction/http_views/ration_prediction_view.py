@@ -154,6 +154,8 @@ Please provide the response in the specified JSON format with order_data and rea
         # Try to get cached results
         cached_response = cache.get(cache_key)
         if cached_response:
+            import time
+            time.sleep(0.5)
             return JsonResponse(cached_response)
 
         # Model configuration
