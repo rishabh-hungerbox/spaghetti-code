@@ -142,7 +142,7 @@ Please provide the response in the specified JSON format with order_data and rea
 
         response['predicted_data'] = json.loads(result.text)['order_data']
         result = {
-            'ration_data': {}
+            'ration_data': {},
         }
         for item in response['predicted_data']:
             order_count = item['order_count']
