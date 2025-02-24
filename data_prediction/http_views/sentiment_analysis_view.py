@@ -31,28 +31,28 @@ response_schema = {
                         'neutral_review_percentage', 'negative_review_percentage',
                         'high_price_complain_reviews', 'sentiment_score']
         },
+        'marketing_suggestions': {
+            'type': 'object',
+            'properties': {
+                'bundle_items': {'type': 'array', 'items': {'type': 'string'}},
+                'promotional_strategies': {'type': 'array', 'items': {'type': 'string'}}
+            }
+        },
+        'pricing_optimization': {
+            'type': 'object',
+            'properties': {
+                'price_strategy': {'type': 'string'},
+                'value_add_suggestions': {'type': 'array', 'items': {'type': 'string'}}
+            }
+        },
         'best_item': {
             'type': 'object',
             'properties': {
                 'name': {'type': 'string'},
                 'postive_neutral_review_percentage': {'type': 'number'},
-                'reasoning': {'type': 'string'},
-                'marketing_suggestions': {
-                    'type': 'object',
-                    'properties': {
-                        'bundle_items': {'type': 'array', 'items': {'type': 'string'}},
-                        'promotional_strategies': {'type': 'array', 'items': {'type': 'string'}}
-                    }
-                },
-                'pricing_optimization': {
-                    'type': 'object',
-                    'properties': {
-                        'price_strategy': {'type': 'string'},
-                        'value_add_suggestions': {'type': 'array', 'items': {'type': 'string'}}
-                    }
-                }
+                'reasoning': {'type': 'string'}
             },
-            'required': ['name', 'postive_neutral_review_percentage', 'reasoning', 'marketing_suggestions', 'pricing_optimization']
+            'required': ['name', 'postive_neutral_review_percentage', 'reasoning']
         },
         'worst_item': {
             'type': 'object',
@@ -233,7 +233,6 @@ GROUP BY r.id order by date(r.created_at), order_items'''
    - Calculate its positive + neutral review percentage
    - Explain why customers liked it
    - Marketing Suggestions:
-     * Suggest 2-3 complementary items for bundling
      * Recommend promotional strategies based on positive feedback
    - Pricing Optimization:
      * If price complaints exist, suggest pricing strategy
