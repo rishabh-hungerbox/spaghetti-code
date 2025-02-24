@@ -33,8 +33,8 @@ class ArimaVendorDataPredictionView(APIView):
 
         # Fit SARIMAX model with seasonal order and exogenous variables
         model = SARIMAX(df['order_count'], 
-                    order=(1, 1, 1), 
-                    seasonal_order=(1, 1, 1, 7), 
+                    order=(1, 1, 1),
+                    seasonal_order=(1, 1, 1, 7),
                     exog=exog, 
                     enforce_stationarity=False, 
                     enforce_invertibility=False)
