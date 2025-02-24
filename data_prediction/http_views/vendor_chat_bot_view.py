@@ -35,6 +35,33 @@ class VendorChatBotView(APIView):
         vendor_name = vendor_data[0]['vendor_name']
         description = vendor_data[0]['description']
 
+        # vendor schedule data
+        vs_query = '''SELECT
+    CASE day_of_week
+        WHEN 0 THEN 'Sunday'
+        WHEN 1 THEN 'Monday'
+        WHEN 2 THEN 'Tuesday'
+        WHEN 3 THEN 'Wednesday'
+        WHEN 4 THEN 'Thursday'
+        WHEN 5 THEN 'Friday'
+        WHEN 6 THEN 'Saturday'
+    END AS day_of_week,
+    min(vs.start_time) as start_time, max(vs.end_time) as end_time, l.name as location_name, c.name as company_name, ct.name as city, s.name as state_name
+FROM vendor_schedules vs
+join location l on vs.location_id = l.id
+join company c on l.company_id = c.id
+join addresses a on l.address_id = a.id
+join states s on a.state_id = s.id
+join cities ct on a.city_id = ct.id
+WHERE vs.vendor_id = %s AND vs.active = 1
+group by vs.vendor_id, vs.location_id, vs.day_of_week
+ORDER BY FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');'''
+
+        vendor_schedule_data = QueryUtility.execute_query(vs_query, [vendor_id], db='mysql')
+        vendor_schedule_str = 'Day of the week, Start Time, End Time, Location Name, Company Name, City, State \n'
+        for row in vendor_schedule_data:
+            vendor_schedule_str += f'{row["day_of_week"]}, {row["start_time"]}, {row["end_time"]}, {row["location_name"]}, {row["company_name"]}, {row["city"]}, {row["state_name"]}\n'
+
         # Get review data
         review_query = '''SELECT
         r.order_items,
@@ -95,7 +122,7 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
                 'menu_name': row['menu_name'],
                 'order_count': row['order_count']
             })
-            
+
         # holiday data
         holiday_str = '''- 2024-12-25, Christmas Day
 - 2025-01-01, New Year's Day
@@ -119,13 +146,14 @@ Therefore sales are high on tuesday, wednesday and thursday, lower on monday and
 Sales are also low on public holidays because people don't come to office on public holidays.
 Your role is to analyze sales data and provide insights that can help improve their business.
 Focus only on business-relevant information and avoid any off-topic discussions.""",
-            
+
             "context": {
                 "vendor_name": vendor_name,
                 "business_description": description,
                 "holiday_data": holiday_str,
                 "historical_data": historical_data,
-                "review_data": review_data
+                "review_data": review_data,
+                "vendor_schedule_data": vendor_schedule_str
             },
 
             "guidelines": """
@@ -149,6 +177,9 @@ Description: {prompt['context']['business_description']}
 Holiday Data:
 {prompt['context']['holiday_data']}
 
+Vendor Schedule Data:
+{prompt['context']['vendor_schedule_data']}
+
 Previous Chat History:
 {question_answer_data}
 
@@ -165,7 +196,7 @@ Question: {prompt['question']}"""
 
         # Model name
         model_name = "models/gemini-2.0-flash"
-        
+
         print(formatted_prompt)
 
         # Generate response
@@ -173,7 +204,7 @@ Question: {prompt['question']}"""
             model=model_name,
             contents=formatted_prompt
         )
-        
+
         if session_id:
             current_data = {
                     'question': question,

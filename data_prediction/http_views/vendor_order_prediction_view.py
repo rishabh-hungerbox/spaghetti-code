@@ -40,7 +40,7 @@ class VendorDataPredictionView(APIView):
         query = '''
             select created_date, count(*) as order_count from sales_order
 where vendor_id in (%s)
-and created_date > DATE_FORMAT(NOW() - INTERVAL 90 DAY, %s)
+and created_date > DATE_FORMAT(NOW() - INTERVAL 60 DAY, %s)
 group by created_date, vendor_id
 order by created_date, vendor_id asc;'''
         data = QueryUtility.execute_query(query, [vendor_id, DATE_FORMAT], db='mysql')
