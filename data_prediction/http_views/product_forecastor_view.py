@@ -101,6 +101,7 @@ where vm.id = %s;'''
         
         product_name = ingredients_results[0]['name']
         ingredients = ingredients_results[0]['ingredients']
+        
         ingredients_data= json.loads(ingredients)
         response['predicted_data'] = find_sales_data(holiday_str, sales_data, prediction_days)
         response['ingredients_data'] = ingredients_data
