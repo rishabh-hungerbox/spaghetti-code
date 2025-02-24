@@ -20,29 +20,58 @@ response_schema = {
                 'positive_review_percentage': {'type': 'number'},
                 'neutral_review_percentage': {'type': 'number'}, 
                 'negative_review_percentage': {'type': 'number'},
-                'high_price_complain_reviews': {'type': 'number'}
+                'high_price_complain_reviews': {'type': 'number'},
+                'sentiment_score': {'type': 'number'}
             },
             'required': ['general_sentiment', 'positive_review_percentage', 
                         'neutral_review_percentage', 'negative_review_percentage',
-                        'high_price_complain_reviews']
+                        'high_price_complain_reviews', 'sentiment_score']
         },
         'best_item': {
             'type': 'object',
             'properties': {
                 'name': {'type': 'string'},
                 'postive_neutral_review_percentage': {'type': 'number'},
-                'reasoning': {'type': 'string'}
+                'reasoning': {'type': 'string'},
+                'marketing_suggestions': {
+                    'type': 'object',
+                    'properties': {
+                        'bundle_items': {'type': 'array', 'items': {'type': 'string'}},
+                        'promotional_strategies': {'type': 'array', 'items': {'type': 'string'}}
+                    }
+                },
+                'pricing_optimization': {
+                    'type': 'object',
+                    'properties': {
+                        'price_strategy': {'type': 'string'},
+                        'value_add_suggestions': {'type': 'array', 'items': {'type': 'string'}}
+                    }
+                }
             },
-            'required': ['name', 'postive_neutral_review_percentage', 'reasoning']
+            'required': ['name', 'postive_neutral_review_percentage', 'reasoning', 'marketing_suggestions', 'pricing_optimization']
         },
         'worst_item': {
             'type': 'object',
             'properties': {
                 'name': {'type': 'string'},
                 'negative_review_percentage': {'type': 'number'},
-                'reasoning': {'type': 'string'}
+                'reasoning': {'type': 'string'},
+                'marketing_suggestions': {
+                    'type': 'object',
+                    'properties': {
+                        'improvement_suggestions': {'type': 'array', 'items': {'type': 'string'}},
+                        'alternative_items': {'type': 'array', 'items': {'type': 'string'}}
+                    }
+                },
+                'pricing_optimization': {
+                    'type': 'object',
+                    'properties': {
+                        'price_suggestion': {'type': 'string'},
+                        'bundle_suggestions': {'type': 'array', 'items': {'type': 'string'}}
+                    }
+                }
             },
-            'required': ['name', 'negative_review_percentage', 'reasoning']
+            'required': ['name', 'negative_review_percentage', 'reasoning', 'marketing_suggestions', 'pricing_optimization']
         },
         'delivery_packing_review_sentiment': {
             'type': 'object',
@@ -58,6 +87,76 @@ response_schema = {
 
 
 class SentimentAnalysisView(APIView):
+    def calculate_sentiment_score(self, reviews_data):
+        """
+        Calculate sentiment score (0-100) based on:
+        1. Rating weights (70% of score)
+        2. Comment sentiment (20% of score)
+        3. Review recency (10% of score)
+        """
+        if not reviews_data:
+            return 0
+
+        rating_weights = {
+            '5': 100,  # 5 star = 100 points
+            '4': 80,   # 4 star = 80 points
+            '3': 60,   # 3 star = 60 points
+            '2': 40,   # 2 star = 40 points
+            '1': 20    # 1 star = 20 points
+        }
+
+        # Positive and negative keywords for comment analysis
+        positive_keywords = [
+            'excellent', 'amazing', 'awesome', 'great', 'good', 'love', 'perfect',
+            'fresh', 'tasty', 'delicious', 'wonderful', 'fantastic', 'best'
+        ]
+        negative_keywords = [
+            'poor', 'bad', 'terrible', 'worst', 'horrible', 'disappointed',
+            'cold', 'late', 'slow', 'stale', 'awful', 'not good'
+        ]
+
+        total_score = 0
+        total_reviews = 0
+        comment_sentiment_score = 0
+        reviews_with_comments = 0
+
+        for date, reviews in reviews_data.items():
+            for review in reviews:
+                total_reviews += 1
+                
+                # 1. Rating Score (70% weight)
+                rating = review['rating'].split('/')[0]
+                rating_score = rating_weights[rating]
+                
+                # 2. Comment Sentiment (20% weight)
+                if review['user_comment']:
+                    reviews_with_comments += 1
+                    comment = review['user_comment'].lower()
+                    positive_matches = sum(1 for word in positive_keywords if word in comment)
+                    negative_matches = sum(1 for word in negative_keywords if word in comment)
+                    comment_score = (positive_matches - negative_matches) * 20  # Scale to 0-100
+                    comment_sentiment_score += max(0, min(100, comment_score + 50))  # Normalize to 0-100
+
+                # 3. Recency weight (10% weight)
+                # More recent reviews get slightly higher weight
+                
+                total_score += (
+                    (rating_score * 0.7) +  # Rating component (70%)
+                    (comment_score * 0.2 if review['user_comment'] else 0)  # Comment component (20%)
+                    # Remaining 10% would be for recency
+                )
+
+        # Calculate final score (0-100 scale)
+        rating_component = (total_score / total_reviews) if total_reviews > 0 else 0
+        comment_component = (comment_sentiment_score / reviews_with_comments) if reviews_with_comments > 0 else 0
+        
+        final_score = min(100, max(0, (
+            (rating_component * 0.7) +
+            (comment_component * 0.3)
+        )))
+
+        return round(final_score, 2)
+
     def get(self, request):
         vendor_id = request.GET.get('vendor_id')
         DATE_FORMAT = '%Y-%m-%d'
@@ -66,6 +165,29 @@ class SentimentAnalysisView(APIView):
         vendor_data = QueryUtility.execute_query(vendor_query, [vendor_id], db='mysql')
         vendor_name = vendor_data[0]['vendor_name']
         vendor_description = vendor_data[0]['description']
+
+        repeating_customers_query = '''
+        WITH CustomerOrders AS (
+            SELECT 
+                employee_id,
+                COUNT(*) as order_count
+            FROM sales_order
+            WHERE vendor_id = %s
+                AND created_date > DATE_FORMAT(NOW() - INTERVAL 90 DAY, %s)
+                AND status != 'cancelled'
+            GROUP BY employee_id
+        )
+        SELECT 
+            COUNT(employee_id) as total_customers,
+            SUM(CASE WHEN order_count > 1 THEN 1 ELSE 0 END) as repeating_customers
+        FROM CustomerOrders;
+        '''
+        
+        customer_metrics = QueryUtility.execute_query(repeating_customers_query, [vendor_id, DATE_FORMAT], db='mysql')
+        total_customers = int(customer_metrics[0]['total_customers'])
+        repeating_customers = int(customer_metrics[0]['repeating_customers'])
+        
+        repeat_percentage = float(round((repeating_customers / total_customers * 100) if total_customers > 0 else 0, 2))
 
         review_query = '''SELECT
         r.order_items,
@@ -106,16 +228,28 @@ GROUP BY r.id order by date(r.created_at), order_items'''
    - Identify the item with most positive reviews
    - Calculate its positive + neutral review percentage
    - Explain why customers liked it
+   - Marketing Suggestions:
+     * Suggest 2-3 complementary items for bundling
+     * Recommend promotional strategies based on positive feedback
+   - Pricing Optimization:
+     * If price complaints exist, suggest pricing strategy
+     * Recommend any value-add opportunities
 
 3. Worst Performing Item:
    - Identify the item with most negative reviews
    - Calculate its negative review percentage
    - Explain common complaints
+   - Marketing Suggestions:
+     * Suggest improvements based on customer feedback
+     * Recommend alternative items to promote instead
+   - Pricing Optimization:
+     * If overpriced, suggest optimal price point
+     * Recommend bundle deals to improve perception
 
 4. Delivery and Packaging Analysis:
    - Evaluate delivery/packaging sentiment (1-2 line analysis of reviews)
    - Calculate percentage of negative delivery/packaging reviews (out of all negative reviews)
-   Note: if no reviews mention delivery or packaging, then don't return  delivery_packing_review_sentiment
+   Note: if no reviews mention delivery or packaging, then don't return delivery_packing_review_sentiment
 
    Review Data:
    {review_data}
@@ -137,6 +271,9 @@ GROUP BY r.id order by date(r.created_at), order_items'''
         # Model name - Use specific version if available, otherwise use base model name
         model_name = "models/gemini-2.0-flash"  # Example of a specific version - check Gemini API documentation for available versions. If not available, use "gemini-pro" or "gemini-2-pro" as appropriate, or "gemini-2-flash" as in your original code if that's the intended model.
 
+        # Calculate sentiment score before generating response
+        sentiment_score = self.calculate_sentiment_score(review_data_dict)
+
         result = client.models.generate_content(
                     model=model_name,  # Use the deterministic model name
                     contents=prompt.format(review_data=review_data),
@@ -152,7 +289,10 @@ GROUP BY r.id order by date(r.created_at), order_items'''
         
         response = json.loads(result.text)
         response['total_reviews'] = len(reviews)
-        response['sentiment_breakdown']['repeating_customers_percentage'] = -1
+        response['sentiment_breakdown']['sentiment_score'] = sentiment_score
+        response['sentiment_breakdown']['repeating_customers'] = repeating_customers
+        response['sentiment_breakdown']['total_customers'] = total_customers
+        response['sentiment_breakdown']['repeating_customers_percentage'] = repeat_percentage
         response['vendor_name'] = vendor_name
         
 
