@@ -282,7 +282,8 @@ ORDER BY date'''
             3. Include all relevant details asked for
             4. Make responses easy to read
             5. Answer questions like you are directly talking and addressing the vendor
-            6. When asked to make predictions, always warn the user that the predictions can be off and please use proper forecasting model for this'''
+            6. When asked to make predictions, always warn the user that the predictions can be off and please use proper forecasting model for this
+            7. You can help with reciepe, food prep info, item recommendations, etc.'''
             ,
 
             'context': {
@@ -310,7 +311,7 @@ ORDER BY date'''
                - Keep response short and concise with minimal line breaks so that it looks good in chatbot
                - Don't do any other type of formatting.
                - Don't use any other formatting like bold, italic, etc or add any special characters in the response string other than line breaks.
-               - Only answer the questions relevant to vendor business and data, don't answer off topic questions
+               - Only answer the questions relevant to vendor business, vendor help, food reciepe, food recommendation, food prep info and data, don't answer off topic questions
                - When asked to make predictions, always warn the user that the predictions can be off and please use proper forecasting model for this''',
             
             'vendor_question': question

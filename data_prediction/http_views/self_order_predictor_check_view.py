@@ -227,7 +227,10 @@ order by created_date, vendor_id asc;'''
         actual_count = actual_data_map.get(predict_date, 0)
         print(predict_date, predict_count, actual_count)
         difference = abs(predict_count - actual_count)
-        difference_percentage = (difference / predict_count) * 100
+        if predict_count > 0:
+            difference_percentage = (difference / predict_count) * 100
+        else:
+            difference_percentage = 0
         median_data_points.append(difference_percentage)
         final_output.append({
             'date': predict_date,
