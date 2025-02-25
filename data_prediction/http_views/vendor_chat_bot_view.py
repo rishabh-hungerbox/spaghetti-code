@@ -197,7 +197,10 @@ Review Data:
 Guidelines:
 {prompt['guidelines']}
 
-Question: {prompt['question']}"""
+Question: {prompt['question']}
+
+Give your response with proper spacing for a chat bot with minimal proper spacing and new lines.
+"""
 
         # Model name
         model_name = "models/gemini-2.0-flash"
