@@ -54,6 +54,7 @@ class RationFinderView(APIView):
             Provide list of ingredients along with the quantity required to make the product. (in grams or milliliters)
             Note: Use Indian Name like 'Atta', 'Ghee' instead of 'Wheat Flour', 'Butter'
             Don't add description to ingredients like 'Green chilies (slit)', 'Carrot (peeled and chopped)'
+            keep the ingridents name simple and same like Capitalization format.
             
 
 
