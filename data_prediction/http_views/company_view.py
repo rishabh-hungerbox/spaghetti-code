@@ -11,10 +11,11 @@ class CompanyView(APIView):
         env = request.GET.get('env')
         data = []
         if env == 'prod':
-            # DATABASES['mysql']['HOST'] = os.getenv('DB_HOST_PROD')
-            # DATABASES['mysql']['PORT'] = os.getenv('DB_PORT_PROD')
-            # DATABASES['mysql']['USER'] = os.getenv('DB_USERNAME_PROD')
-            # DATABASES['mysql']['PASSWORD'] = os.getenv('DB_PASSWORD_PROD')
+            if os.getenv('APP_ENV') == 'local':
+                DATABASES['mysql']['HOST'] = os.getenv('DB_HOST_PROD')
+                DATABASES['mysql']['PORT'] = os.getenv('DB_PORT_PROD')
+                DATABASES['mysql']['USER'] = os.getenv('DB_USERNAME_PROD')
+                DATABASES['mysql']['PASSWORD'] = os.getenv('DB_PASSWORD_PROD')
             data = [
                 {
                     'company_id': 135,

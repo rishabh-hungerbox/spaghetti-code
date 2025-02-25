@@ -17,4 +17,5 @@ urlpatterns = [
     path('company', views.CompanyView.as_view()),
     path('product-daily-forecastor', views.ProductDailyForecastorView.as_view()),
     path('image-analyzer', views.ImageAnalyzerView.as_view()),
+    path('self-order-predictor-check', views.SelfOrderPredictorCheckView.as_view()),
     ]

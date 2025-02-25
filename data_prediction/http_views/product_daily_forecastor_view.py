@@ -58,7 +58,7 @@ order by created_date, product_name asc;'''
 
         response = find_sales_data(sales_data)
         for item in response['item_predictions']:
-            item['product_id'] = product_map[item['product_name']]
+            item['product_id'] = product_map.get(item['product_name'], -1)
         return JsonResponse(response)
 
 

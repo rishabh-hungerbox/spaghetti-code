@@ -11,3 +11,4 @@ from data_prediction.http_views.company_view import CompanyView
 from data_prediction.http_views.vendor_view import VendorView
 from data_prediction.http_views.product_daily_forecastor_view import ProductDailyForecastorView
 from data_prediction.http_views.image_analyzer_view import ImageAnalyzerView
+from data_prediction.http_views.self_order_predictor_check_view import SelfOrderPredictorCheckView
