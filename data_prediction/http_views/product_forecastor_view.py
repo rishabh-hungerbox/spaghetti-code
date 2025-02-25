@@ -32,9 +32,10 @@ feedback_schema = {
                 },
                 'required': ['points']
             }
-        }
+        },
+        'rating_score': {'type': 'number'}
     },
-    'required': ['feedback_summary', 'suggestions']
+    'required': ['feedback_summary', 'suggestions', 'rating_score']
 }
 
 
@@ -215,6 +216,7 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
     1. Analyze the customer feedback and provide feedback on the product.
     2. Give a summary of the feedback in 2-3 points.
     3. Give suggestions to improve the product based on the said feedback using 2-3 points.
+    4. Give a rating score out of 5 based on the feedback.
     '''
     
     # Generate cache key from prompt
