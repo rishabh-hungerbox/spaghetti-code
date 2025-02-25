@@ -4,6 +4,8 @@ from etc.query_utility import QueryUtility
 import json
 from google import genai
 import os
+from django.core.cache import cache
+import hashlib
 
 # Initialize genai client - ensure API key is set in environment variables
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
@@ -149,6 +151,15 @@ Required Analysis:
 
 Please provide the response in the specified JSON format with order_data and reasoning.
         '''
+        
+        
+    # Generate cache key from prompt
+    cache_key = f"sales_prediction_{hashlib.md5(prompt.encode()).hexdigest()}"
+    
+    # Try to get cached response
+    cached_response = cache.get(cache_key)
+    if cached_response:
+        return cached_response
 
     model_name = "models/gemini-2.0-flash"
     result = client.models.generate_content(
@@ -163,7 +174,10 @@ Please provide the response in the specified JSON format with order_data and rea
             'candidate_count': 1,
             'seed': 42,
         })
-    return json.loads(result.text)
+    
+    response = json.loads(result.text)
+    cache.set(cache_key, response, 7200)
+    return response
 
 
 def product_feedback(vendor_id, product_name):
@@ -202,6 +216,15 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
     2. Give a summary of the feedback in 2-3 points.
     3. Give suggestions to improve the product based on the said feedback using 2-3 points.
     '''
+    
+    # Generate cache key from prompt
+    cache_key = f"feedback_{hashlib.md5(prompt.encode()).hexdigest()}"
+    
+    # Try to get cached response
+    cached_response = cache.get(cache_key)
+    if cached_response:
+        return cached_response
+    
     model_name = "models/gemini-2.0-flash"
     result = client.models.generate_content(
         model=model_name,
@@ -215,5 +238,8 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
             'candidate_count': 1,
             'seed': 42,
         })
-    return json.loads(result.text)
+    
+    response = json.loads(result.text)
+    cache.set(cache_key, response, 7200)
+    return response
     

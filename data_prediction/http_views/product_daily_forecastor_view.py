@@ -4,6 +4,8 @@ from etc.query_utility import QueryUtility
 import json
 from google import genai
 import os
+from django.core.cache import cache
+import hashlib
 
 # Initialize genai client - ensure API key is set in environment variables
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
@@ -78,7 +80,15 @@ Required Analysis:
 3. The prediction should be based on the most recent day and the previous day
 Please provide the response in the specified JSON format with order_data and reasoning.
         '''
-        
+
+    # Generate cache key from prompt
+    cache_key = f"sales_prediction_{hashlib.md5(prompt.encode()).hexdigest()}"
+    
+    # Try to get cached response
+    cached_response = cache.get(cache_key)
+    if cached_response:
+        return cached_response
+
     print(prompt)
 
     model_name = "models/gemini-2.0-flash"
@@ -94,5 +104,11 @@ Please provide the response in the specified JSON format with order_data and rea
             'candidate_count': 1,
             'seed': 42,
         })
-    return json.loads(result.text)
+    
+    response = json.loads(result.text)
+    
+    # Cache the response for 1 hour (3600 seconds)
+    cache.set(cache_key, response, 7200)
+    
+    return response
     
