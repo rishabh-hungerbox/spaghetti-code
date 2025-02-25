@@ -324,7 +324,9 @@ Review Data:
                             negative_mentions += 1
             
             response['delivery_packing_review_sentiment'] = {
-                'sentiment': 'negative' if negative_mentions/total_mentions > 0.3 else 'positive' if total_mentions > 0 else 'neutral',
+                'sentiment': ('negative' if negative_mentions/total_mentions > 0.3
+                            else 'positive') if total_mentions > 0
+                            else 'neutral',
                 'negative_review_percentage': round((negative_mentions/total_mentions * 100) if total_mentions > 0 else 0, 2)
             }
 

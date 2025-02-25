@@ -49,6 +49,13 @@ and created_date between '2024-01-01' and '2025-01-31'
 group by created_date, vendor_id
 order by created_date, vendor_id asc;'''
         data = QueryUtility.execute_query(query, [vendor_id], db='mysql')
+        data_points = len(data)
+        print('data_points',data_points)
+        if data_points < 170:
+            return JsonResponse({'error': 'Not enough data to make predictions'}, status=400)
+        
+        for row in data:
+            print(row['created_date'], row['order_count'])
 
         response = {'current_data': [], 'predicted_data': []}
 
@@ -150,7 +157,7 @@ Required Analysis:
    - Historical weekly patterns
    - Typical day-of-week variations
    - Seasonal trends if present
-4. Don't talk about holiday weightag
+4. Don't talk about holiday weightage
 
 Please provide the response in the specified JSON format with order_data and reasoning.'''
 

@@ -26,6 +26,15 @@ class CompanyView(APIView):
                     'company_id': 200,
                     'company_name': 'American Express'
                 },
+                {
+                    'company_id': 113,
+                    'company_name': 'IBM'
+                },
+                {
+                    'company_id': 477,
+                    'company_name': 'InterGlobe Aviation Limited',
+                }
+                
             ]
         else:
             DATABASES['mysql']['HOST'] = os.environ.get('DB_HOST')
