@@ -116,16 +116,18 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
             item_total_orders[row['menu_name']] += row['order_count']
 
         # Then create review data and item performance
-        review_data = ""
+        review_data = "Item Reviews Summary:\n"
+        review_data += "Item Name, Rating, Comments\n"
         review_data_dict = {}
         for row in reviews:
-            if row['comment_date'] not in review_data_dict:
-                review_data_dict[row['comment_date']] = []
-            review_data_dict[row['comment_date']].append({
-                'order_items': row['order_items'],
-                'rating': row['rating'],
-                'user_comment': row['user_comment']
-            })
+            review_data += f"{row['order_items']}, {row['rating']}, {row['user_comment']}\n"
+            # if row['comment_date'] not in review_data_dict:
+            #     review_data_dict[row['comment_date']] = []
+            # review_data_dict[row['comment_date']].append({
+            #     'order_items': row['order_items'],
+            #     'rating': row['rating'],
+            #     'user_comment': row['user_comment']
+            # })
 
         # Organize reviews by item
         item_performance = {}
@@ -174,12 +176,12 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
         }
 
         # Format review summary
-        review_data = "\nItem Reviews Summary:\n"
-        for item, data in item_performance.items():
-            avg_rating = data['rating']
-            review_data += f"{item}:\n"
-            review_data += f"- Average Rating: {avg_rating:.1f}/5\n"
-            review_data += f"- Total Reviews: {len(data['ratings'])}\n"
+        # review_data = "\nItem Reviews Summary:\n"
+        # for item, data in item_performance.items():
+        #     avg_rating = data['rating']
+        #     review_data += f"{item}:\n"
+        #     review_data += f"- Average Rating: {avg_rating:.1f}/5\n"
+        #     review_data += f"- Total Reviews: {len(data['ratings'])}\n"
 
         # Format historical item-level data with clear item performance metrics
         historical_data = ""
@@ -198,16 +200,17 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
 - 2025-03-21, Good Friday'''
 
         # Get revenue data with proper aggregation
-        revenue_query = '''SELECT 
-            DATE(created_at) AS date,
-            SUM(total_value) AS daily_sales,
-            COUNT(id) as total_orders
-        FROM sales_order 
-        WHERE vendor_id = %s 
-            AND created_at > DATE_FORMAT(NOW() - INTERVAL 90 DAY, %s)
-            AND status NOT IN ('rejected', 'payment_failed')
-        GROUP BY DATE(created_at)
-        ORDER BY date;'''
+        revenue_query = '''SELECT created_date AS date,
+SUM(vm.price) AS daily_sales,
+COUNT(*) as total_orders
+from sales_order so
+join order_items oi on oi.order_id = so.id
+join vendor_menu vm on vm.id = oi.product_id
+WHERE so.vendor_id = %s
+    AND created_date > DATE_FORMAT(NOW() - INTERVAL 90 DAY, %s)
+    AND so.status NOT IN ('rejected', 'payment_failed')
+GROUP BY created_date
+ORDER BY date'''
         
         revenue_data = QueryUtility.execute_query(revenue_query, [vendor_id, DATE_FORMAT], db='mysql')
 
@@ -302,10 +305,13 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
             
             1. RULES:
                - Use natural language
-               - Format numbers for readability
-               - Include all requested details
-               - Make multi-line responses easy to read
-               - Keep responses concise but complete''',
+               - When asked about price or sales, use Rs (rupees) symbol
+               - Only answer what is asked in concise form, don't add data or any other information if question is unrelated.
+               - Keep response short and concise with minimal line breaks so that it looks good in chatbot
+               - Don't do any other type of formatting.
+               - Don't use any other formatting like bold, italic, etc or add any special characters in the response string other than line breaks.
+               - Only answer the questions relevant to vendor business and data, don't answer off topic questions
+               - When asked to make predictions, always warn the user that the predictions can be off and please use proper forecasting model for this''',
             
             'vendor_question': question
         }

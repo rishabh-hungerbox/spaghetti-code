@@ -40,9 +40,5 @@ class CompanyView(APIView):
                     'company_id': 388,
                     'company_name': 'Swish'
                 },
-                {
-                    'company_id': 390,
-                    'company_name': 'AI Avengers'
-                },
             ]
         return JsonResponse(data, safe=False)
