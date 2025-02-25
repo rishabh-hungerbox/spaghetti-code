@@ -127,7 +127,7 @@ Business Rules:
 3. Seasonal Considerations:
    - Consider any visible seasonal patterns in the historical data
    - Account for upcoming holidays or special events
-   
+
 Holiday Data with weightage of holiday, high weightage means more impact on order count:
 {holiday_str}
 
