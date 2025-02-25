@@ -19,12 +19,13 @@ class ImageAnalyzerView(APIView):
     def get(self, request):  # Keep using GET method
         product_id = request.GET.get('product_id')
         product_name = request.GET.get('product_name')
+        force_suggest = request.GET.get('force_suggest')
         image_url = MenuMappingUtility.get_product_image_url(product_id)
 
         temp_dir = tempfile.mkdtemp()
         temp_path = os.path.join(temp_dir, 'downloaded_image.jpg')  # Renamed to reflect download source
 
-        if not image_url:
+        if not image_url or force_suggest:
             suggestion = ImageGenerator.generate_image(product_name)
             
             return JsonResponse({

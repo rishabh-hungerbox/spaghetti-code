@@ -52,6 +52,6 @@ class ImageGenerator:
             s3_obj.upload_public_read_file(
                 image_path, os.getenv('S3_BUCKET'), 'uploads/ai/' + image_name
             )
-            s3_file_path = os.getenv('S3_URL') + '/uploads/ai/' + image_name
+            s3_file_path = 'https://' + os.getenv('S3_DOMAIN') + '/' + os.getenv('S3_BUCKET') + '/uploads/ai/' + image_name
             s3_links.append(s3_file_path)
         return s3_links
