@@ -299,35 +299,8 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
             },
             
             'guidelines': '''
-            1. REVENUE RESPONSES:
-               - Total revenue → "The total revenue is ₹{total} from {orders} orders"
-               - Monthly revenue → "In {month}, the revenue was ₹{total} from {orders} orders"
-               - Daily revenue → "On {date}, the revenue was ₹{total} from {orders} orders"
-               - Date range → "From {start_date} to {end_date}:
-                             Total Revenue: ₹{total}
-                             Total Orders: {orders}"
             
-            2. ITEM RESPONSES:
-               - Name only → "{item_name}"
-               - Price → "{item_name} is priced at ₹{price}"
-               - Quantity → "{item_name} has sold {orders} orders"
-               - Rating → "{item_name} has a rating of {rating}/5 from {num_reviews} reviews"
-               - Best/Worst → "{item_name} is the best/worst selling item with {orders} orders"
-            
-            3. SCHEDULE RESPONSES:
-               - "Schedule for {location}:
-                 {day}: {start_time} to {end_time}"
-            
-            4. HOLIDAY RESPONSES:
-               - Without sales → "Upcoming holiday: {date} - {holiday_name}"
-               - With sales → "On {holiday_name} ({date}), sales were ₹{amount} from {orders} orders"
-            
-            5. RATING RESPONSES:
-               - "Item: {item_name}
-                 Rating: {rating}/5
-                 Reviews: {num_reviews}"
-            
-            6. RULES:
+            1. RULES:
                - Use natural language
                - Format numbers for readability
                - Include all requested details
