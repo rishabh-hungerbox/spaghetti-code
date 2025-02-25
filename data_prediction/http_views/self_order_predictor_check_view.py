@@ -51,8 +51,9 @@ order by created_date, vendor_id asc;'''
         data = QueryUtility.execute_query(query, [vendor_id], db='mysql')
         data_points = len(data)
         print('data_points',data_points)
-        if data_points < 170:
-            return JsonResponse({'error': 'Not enough data to make predictions'}, status=400)
+        if os.getenv('APP_ENV') == 'local':
+            if data_points < 170:
+                return JsonResponse({'message': 'Not enough data to make predictions'}, status=400)
         
         for row in data:
             print(row['created_date'], row['order_count'])
