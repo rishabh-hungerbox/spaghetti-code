@@ -91,24 +91,11 @@ class VendorChatBotView(APIView):
     AND r.reference = 'order'
 GROUP BY r.id order by date(r.created_at), order_items;'''
         reviews = QueryUtility.execute_query(review_query, [vendor_id, DATE_FORMAT], db='mysql')
-        review_data = ''
-        
-        review_data_dict = {}
-        for row in reviews:
-            if row['comment_date'] not in review_data_dict:
-                review_data_dict[row['comment_date']] = []
-                review_data += f'\nReview Date: {row["comment_date"]}\n'
-            review_data_dict[row['comment_date']].append({
-                'order_items': row['order_items'],
-                'rating': row['rating'],
-                'user_comment': row['user_comment']
-            })
-            review_data += f'- Item: {row["order_items"]} - Rating (out of 5): {row["rating"]}'
-            if row['user_comment'] != '':
-                review_data += f'- Comment: {row["user_comment"]}\n'
 
-        # Get sales data
-        query = '''select so.created_date, max(vm.name) as 'menu_name', count(oi.qty) as order_count from sales_order so
+        # Get sales data first
+        query = '''select so.created_date, max(vm.name) as 'menu_name', 
+                    count(oi.qty) as order_count, max(oi.price) as item_price 
+                    from sales_order so
                     join order_items oi on so.id = oi.order_id
                     join vendor_menu vm on vm.id = oi.product_id
                     where so.created_date > DATE_FORMAT(NOW() - INTERVAL 90 DAY, %s)
@@ -117,18 +104,90 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
                     order by so.created_date;'''
         data = QueryUtility.execute_query(query, [DATE_FORMAT, vendor_id], db='mysql')
 
-        # Format historical data
-        historical_data = ""
-        order_date_data = {}
+        # First create item_total_orders and item_prices
+        item_total_orders = {}  # Track total orders per item
+        item_prices = {}  # Track prices per item
+
+        # Aggregate total orders per item
         for row in data:
-            if row['created_date'] not in order_date_data:
-                order_date_data[row['created_date']] = []
-            order_date_data[row['created_date']].append({
-                'menu_name': row['menu_name'],
-                'order_count': row['order_count']
+            if row['menu_name'] not in item_total_orders:
+                item_total_orders[row['menu_name']] = 0
+                item_prices[row['menu_name']] = row['item_price']
+            item_total_orders[row['menu_name']] += row['order_count']
+
+        # Then create review data and item performance
+        review_data = ""
+        review_data_dict = {}
+        for row in reviews:
+            if row['comment_date'] not in review_data_dict:
+                review_data_dict[row['comment_date']] = []
+            review_data_dict[row['comment_date']].append({
+                'order_items': row['order_items'],
+                'rating': row['rating'],
+                'user_comment': row['user_comment']
             })
 
-        # holiday data
+        # Organize reviews by item
+        item_performance = {}
+        for date, reviews in review_data_dict.items():
+            for review in reviews:
+                item = review['order_items']
+                if item not in item_performance:
+                    item_performance[item] = {
+                        'ratings': [],
+                        'comments': [],
+                        'orders': item_total_orders.get(item, 0),
+                        'price': item_prices.get(item, 0)
+                    }
+                item_performance[item]['ratings'].append(review['rating'])
+                if review['user_comment']:
+                    item_performance[item]['comments'].append(review['user_comment'])
+
+        # Calculate average ratings
+        for item in item_performance:
+            ratings = item_performance[item]['ratings']
+            if ratings:
+                avg_rating = sum([float(r.split('/')[0]) for r in ratings]) / len(ratings)
+                item_performance[item]['rating'] = avg_rating
+            else:
+                item_performance[item]['rating'] = None
+
+        # Then identify best and worst selling items
+        sorted_items = sorted(item_total_orders.items(), key=lambda x: x[1], reverse=True)
+        best_selling = sorted_items[0]  # (item_name, order_count)
+        worst_selling = sorted_items[-1]  # (item_name, order_count)
+
+        # Create performance data structure
+        performance_data = {
+            'best_selling': {
+                'name': best_selling[0],
+                'orders': best_selling[1],
+                'price': item_prices[best_selling[0]],
+                'rating': item_performance.get(best_selling[0], {}).get('rating')
+            },
+            'worst_selling': {
+                'name': worst_selling[0],
+                'orders': worst_selling[1],
+                'price': item_prices[worst_selling[0]],
+                'rating': item_performance.get(worst_selling[0], {}).get('rating')
+            }
+        }
+
+        # Format review summary
+        review_data = "\nItem Reviews Summary:\n"
+        for item, data in item_performance.items():
+            avg_rating = data['rating']
+            review_data += f"{item}:\n"
+            review_data += f"- Average Rating: {avg_rating:.1f}/5\n"
+            review_data += f"- Total Reviews: {len(data['ratings'])}\n"
+
+        # Format historical item-level data with clear item performance metrics
+        historical_data = ""
+        historical_data += "\nItem Performance Data:\n"
+        historical_data += "Best selling item: " + best_selling[0] + f": {best_selling[1]} orders, Price: ₹{item_prices[best_selling[0]]}\n"
+        historical_data += "Worst selling item: " + worst_selling[0] + f": {worst_selling[1]} orders, Price: ₹{item_prices[worst_selling[0]]}\n"
+        
+        # Use static holiday data
         holiday_str = '''- 2024-12-25, Christmas Day
 - 2025-01-01, New Year's Day
 - 2025-01-14, Makar Sankranti / Pongal
@@ -138,69 +197,154 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
 - 2025-03-17, Holi
 - 2025-03-21, Good Friday'''
 
-        for date, items in order_date_data.items():
-            historical_data += f'\nDate: {date}\n'
-            for item in items:
-                historical_data += f'- {item["menu_name"]}: {item["order_count"]} orders\n'
+        # Get revenue data with proper aggregation
+        revenue_query = '''SELECT 
+            DATE(created_at) AS date,
+            SUM(total_value) AS daily_sales,
+            COUNT(id) as total_orders
+        FROM sales_order 
+        WHERE vendor_id = %s 
+            AND created_at > DATE_FORMAT(NOW() - INTERVAL 90 DAY, %s)
+            AND status NOT IN ('rejected', 'payment_failed')
+        GROUP BY DATE(created_at)
+        ORDER BY date;'''
+        
+        revenue_data = QueryUtility.execute_query(revenue_query, [vendor_id, DATE_FORMAT], db='mysql')
 
-        # Structured prompt with clear sections
+        # Format revenue data
+        daily_revenue_data = {}
+        monthly_revenue_data = {}
+        total_revenue = 0
+        total_orders = 0
+
+        for row in revenue_data:
+            date_str = row['date'].strftime('%Y-%m-%d')
+            month_str = row['date'].strftime('%Y-%m')
+            daily_sales = float(row['daily_sales'])
+            daily_orders = int(row['total_orders'])
+            
+            # Store daily data
+            daily_revenue_data[date_str] = {
+                'sales': daily_sales,
+                'orders': daily_orders
+            }
+            
+            # Aggregate monthly data
+            if month_str not in monthly_revenue_data:
+                monthly_revenue_data[month_str] = {'sales': 0, 'orders': 0}
+            monthly_revenue_data[month_str]['sales'] += daily_sales
+            monthly_revenue_data[month_str]['orders'] += daily_orders
+            
+            # Update totals
+            total_revenue += daily_sales
+            total_orders += daily_orders
+
+        # Format revenue insights without order value range for monthly data
+        revenue_insights = ""
+        for date, data in daily_revenue_data.items():
+            revenue_insights += f"\nDate: {date}\n"
+            revenue_insights += f"- Daily Revenue: ₹{data['sales']:.2f}\n"
+            revenue_insights += f"- Total Orders: {data['orders']}\n"
+
+        # Add monthly summaries
+        revenue_insights += "\nMonthly Performance Summary:\n"
+        for month, data in monthly_revenue_data.items():
+            revenue_insights += f"\nMonth: {month}\n"
+            revenue_insights += f"- Total Monthly Revenue: ₹{data['sales']:.2f}\n"
+            revenue_insights += f"- Total Monthly Orders: {data['orders']}\n"
+            revenue_insights += f"- Average Daily Revenue: ₹{data['sales']/30:.2f}\n"
+            revenue_insights += f"- Average Daily Orders: {data['orders']/30:.2f}\n"
+
+        # Add overall summary
+        revenue_insights += f"\nOverall Performance (Last 90 Days):\n"
+        revenue_insights += f"- Total Revenue: ₹{total_revenue:.2f}\n"
+        revenue_insights += f"- Total Orders: {total_orders}\n"
+        revenue_insights += f"- Daily Average Revenue: ₹{total_revenue/90:.2f}\n"
+
+        # Format holiday sales data
+        holiday_sales = {}
+        holiday_dates = [line.split(',')[0].strip('- ') for line in holiday_str.split('\n') if line]
+        for row in revenue_data:
+            date_str = row['date'].strftime('%Y-%m-%d')
+            if date_str in holiday_dates:
+                holiday_sales[date_str] = {
+                    'sales': row['daily_sales'],
+                    'orders': row['total_orders']
+                }
+
         prompt = {
-            "system_role": """You are an AI assistant dedicated to helping vendors understand their business performance. 
-The vendors are onboarded on a platform called 'Hungerbox' which is used for ordering food in corporate canteens.
-Therefore sales are high on tuesday, wednesday and thursday, lower on monday and friday and lowest on saturday and sunday.
-Sales are also low on public holidays because people don't come to office on public holidays.
-Your role is to analyze sales data and provide insights that can help improve their business.
-Focus only on business-relevant information and avoid any off-topic discussions.""",
+            'system_role': '''You are a friendly and precise AI assistant for a food vendor. You MUST:
+            1. Answer in a natural, conversational way
+            2. Use exact numbers with proper formatting
+            3. Include all relevant details asked for
+            4. Make responses easy to read''',
 
-            "context": {
-                "vendor_name": vendor_name,
-                "business_description": description,
-                "holiday_data": holiday_str,
-                "historical_data": historical_data,
-                "review_data": review_data,
-                "vendor_schedule_data": vendor_schedule_str
+            'context': {
+                'vendor_name': vendor_name,
+                'business_description': description,
+                'holiday_data': holiday_str,
+                'holiday_sales': holiday_sales,
+                'vendor_schedule_data': vendor_schedule_str,
+                'revenue_insights': revenue_insights,
+                'historical_data': historical_data,
+                'review_data': review_data,
+                'item_performance': item_performance,
+                'daily_revenue': daily_revenue_data,
+                'monthly_revenue': monthly_revenue_data,
+                'total_revenue': {'sales': total_revenue, 'orders': total_orders},
+                'performance_data': performance_data
             },
-
-            "guidelines": """
-- Provide specific insights based on the sales data
-- Focus on trends and patterns in the data
-- Make business-relevant recommendations
-- Stay within the scope of food service and business operations
-- Do not discuss topics unrelated to the vendor's business""",
-
-            "question": question
+            
+            'guidelines': '''
+            1. REVENUE RESPONSES:
+               - Total revenue → "The total revenue is ₹{total} from {orders} orders"
+               - Monthly revenue → "In {month}, the revenue was ₹{total} from {orders} orders"
+               - Daily revenue → "On {date}, the revenue was ₹{total} from {orders} orders"
+               - Date range → "From {start_date} to {end_date}:
+                             Total Revenue: ₹{total}
+                             Total Orders: {orders}"
+            
+            2. ITEM RESPONSES:
+               - Name only → "{item_name}"
+               - Price → "{item_name} is priced at ₹{price}"
+               - Quantity → "{item_name} has sold {orders} orders"
+               - Rating → "{item_name} has a rating of {rating}/5 from {num_reviews} reviews"
+               - Best/Worst → "{item_name} is the best/worst selling item with {orders} orders"
+            
+            3. SCHEDULE RESPONSES:
+               - "Schedule for {location}:
+                 {day}: {start_time} to {end_time}"
+            
+            4. HOLIDAY RESPONSES:
+               - Without sales → "Upcoming holiday: {date} - {holiday_name}"
+               - With sales → "On {holiday_name} ({date}), sales were ₹{amount} from {orders} orders"
+            
+            5. RATING RESPONSES:
+               - "Item: {item_name}
+                 Rating: {rating}/5
+                 Reviews: {num_reviews}"
+            
+            6. RULES:
+               - Use natural language
+               - Format numbers for readability
+               - Include all requested details
+               - Make multi-line responses easy to read
+               - Keep responses concise but complete''',
+            
+            'question': question
         }
 
-        # Convert prompt to string format
         formatted_prompt = f"""System Role:
 {prompt['system_role']}
-
-Business Context:
-Vendor: {prompt['context']['vendor_name']}
-Description: {prompt['context']['business_description']}
-
-Holiday Data:
-{prompt['context']['holiday_data']}
-
-Vendor Schedule Data:
-{prompt['context']['vendor_schedule_data']}
-
-Previous Chat History:
-{question_answer_data}
-
-Historical Sales Data:
-{prompt['context']['historical_data']}
-
-Review Data:
-{prompt['context']['review_data']}
-
+Data:
+Total Revenue: {{'sales': {total_revenue}, 'orders': {total_orders}}}
+Monthly Revenue: {monthly_revenue_data}
+Daily Revenue: {daily_revenue_data}
+Item Performance: {performance_data}
+Holiday Data: {holiday_sales}
 Guidelines:
 {prompt['guidelines']}
-
-Question: {prompt['question']}
-
-Give your response with proper spacing for a chat bot with minimal proper spacing and new lines.
-"""
+Question: {prompt['question']}"""
 
         # Model name
         model_name = "models/gemini-2.0-flash"

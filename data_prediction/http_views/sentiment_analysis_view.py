@@ -219,44 +219,43 @@ GROUP BY r.id order by date(r.created_at), order_items'''
         review_data_dict = {}
         review_data = ''
 
-        prompt = '''Given the following reviews, analyze them and provide a detailed breakdown in the following format:
+        prompt = '''Analyze the following customer reviews and provide a structured breakdown:
 
-1. Overall Sentiment Breakdown:
-   - Determine the general sentiment (2-3 lines analysis of reviews)
-   - Calculate percentage of positive, neutral, and negative reviews
-   - Count reviews mentioning high prices or price complaints
-   Note: positive, neutral, and negative reviews percentage should always add to 100%
-   Note: if no reviews mention high prices or price complaints, then the high_price_complain_reviews should be 0
+1. Overall Sentiment Metrics:
+   - Calculate exact percentages of positive (4-5★), neutral (3★), and negative (1-2★) reviews
+   - Count reviews specifically mentioning price concerns or being expensive
+   - Provide data-backed general sentiment summary (2-3 lines)
+   Note: Positive + neutral + negative percentages must total 100%
 
-2. Best Performing Item:
-   - Identify the item with most positive reviews
-   - Calculate its positive + neutral review percentage
-   - Explain why customers liked it
-   - Marketing Suggestions:
-     * Recommend promotional strategies based on positive feedback
-   - Pricing Optimization:
-     * If price complaints exist, suggest pricing strategy
-     * Recommend any value-add opportunities
+2. Best Performing Item Analysis:
+   - Identify item with highest positive+neutral review ratio
+   - Calculate its positive+neutral review percentage
+   - List key positive attributes mentioned in reviews
+   - Marketing Opportunities:
+     * Data-driven promotional strategies
+   - Pricing Strategy:
+     * Price optimization suggestions based on review feedback
+     * Value-add opportunities supported by customer comments
 
-3. Worst Performing Item:
-   - Identify the item with most negative reviews
+3. Worst Performing Item Analysis:
+   - Identify item with highest negative review ratio
    - Calculate its negative review percentage
-   - Explain common complaints
-   - Marketing Suggestions:
-     * Suggest improvements based on customer feedback
-     * Recommend alternative items to promote instead
-   - Pricing Optimization:
-     * If overpriced, suggest optimal price point
-     * Recommend bundle deals to improve perception
+   - List specific recurring complaints
+   - Improvement Plan:
+     * Action items based on negative feedback patterns
+     * Alternative items with better performance metrics
+   - Price Optimization:
+     * Price adjustment recommendations based on feedback
+     * Bundle suggestions to improve value perception
 
-4. Delivery and Packaging Analysis:
-   - Evaluate delivery/packaging sentiment (1-2 line analysis of reviews)
-   - Calculate percentage of negative delivery/packaging reviews (out of all negative reviews)
-   Note: if no reviews mention delivery or packaging, then don't return delivery_packing_review_sentiment
+4. Delivery/Packaging Performance:
+   - Calculate percentage of negative delivery/packaging mentions among all negative reviews
+   - Identify specific delivery/packaging issues from reviews
+   Note: Skip this section if no delivery/packaging feedback exists
 
-   Review Data:
-   {review_data}
-   '''
+Review Data:
+{review_data}
+'''
 
         for row in reviews:
             if row['comment_date'] not in review_data_dict:
@@ -307,6 +306,28 @@ GROUP BY r.id order by date(r.created_at), order_items'''
                         },)
         
         response = json.loads(result.text)
+        
+        # Calculate delivery/packing sentiment if not present
+        if 'delivery_packing_review_sentiment' not in response:
+            delivery_packing_keywords = ['delivery', 'delivered', 'packaging', 'packed', 'packing']
+            total_mentions = 0
+            negative_mentions = 0
+            
+            for date_reviews in review_data_dict.values():
+                for review in date_reviews:
+                    comment = review['user_comment'].lower()
+                    if any(keyword in comment for keyword in delivery_packing_keywords):
+                        total_mentions += 1
+                        # Consider it negative if rating is 1-2 or has negative keywords
+                        rating = int(review['rating'].split('/')[0])
+                        if rating <= 2 or any(word in comment for word in ['late', 'poor', 'bad', 'worst', 'damaged']):
+                            negative_mentions += 1
+            
+            response['delivery_packing_review_sentiment'] = {
+                'sentiment': 'negative' if negative_mentions/total_mentions > 0.3 else 'positive' if total_mentions > 0 else 'neutral',
+                'negative_review_percentage': round((negative_mentions/total_mentions * 100) if total_mentions > 0 else 0, 2)
+            }
+
         response['total_reviews'] = len(reviews)
         response['sentiment_breakdown']['sentiment_score'] = sentiment_score
         response['sentiment_breakdown']['repeating_customers'] = repeating_customers
