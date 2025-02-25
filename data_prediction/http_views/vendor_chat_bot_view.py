@@ -312,7 +312,7 @@ ORDER BY date'''
                - Don't do any other type of formatting.
                - Don't use any other formatting like bold, italic, etc or add any special characters in the response string other than line breaks.
                - Only answer the questions relevant to vendor business, vendor help, food reciepe, food recommendation, food prep info and data, don't answer off topic questions
-               - When asked to make predictions, always warn the user that the predictions can be off and please use proper forecasting model for this''',
+               - When asked to make predictions, always warn the user that the predictions can be off and please use proper forecasting model for this and give the prediction''',
             
             'vendor_question': question
         }
