@@ -27,8 +27,8 @@ class VendorChatBotView(APIView):
             if cache_data:
                 if len(cache_data) < 7:
                     for data in cache_data:
-                        question_answer_data += f'System: {data["question"]}\n'
-                        question_answer_data += f'Vendor: {data["answer"]}\n'
+                        question_answer_data += f'Vendor_Question: {data["question"]}\n'
+                        question_answer_data += f'System_Answer: {data["answer"]}\n'
 
         DATE_FORMAT = '%Y-%m-%d'
 
@@ -273,11 +273,14 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
                 }
 
         prompt = {
-            'system_role': '''You are a friendly and precise AI assistant for a food vendor. You MUST:
+            'system_role': '''You are a friendly and precise AI assistant for a food vendor. You are talking to the vendor himself on chatbot. You MUST:
             1. Answer in a natural, conversational way
             2. Use exact numbers with proper formatting
             3. Include all relevant details asked for
-            4. Make responses easy to read''',
+            4. Make responses easy to read
+            5. Answer questions like you are directly talking and addressing the vendor
+            6. When asked to make predictions, always warn the user that the predictions can be off and please use proper forecasting model for this'''
+            ,
 
             'context': {
                 'vendor_name': vendor_name,
@@ -331,20 +334,28 @@ GROUP BY r.id order by date(r.created_at), order_items;'''
                - Make multi-line responses easy to read
                - Keep responses concise but complete''',
             
-            'question': question
+            'vendor_question': question
         }
 
         formatted_prompt = f"""System Role:
 {prompt['system_role']}
+
+Vendor That your talking to:
+Vendor Name: {vendor_name}
+Vendor Description: {description}
+
 Data:
 Total Revenue: {{'sales': {total_revenue}, 'orders': {total_orders}}}
 Monthly Revenue: {monthly_revenue_data}
 Daily Revenue: {daily_revenue_data}
 Item Performance: {performance_data}
 Holiday Data: {holiday_sales}
+Vendor Schedule: {vendor_schedule_str}
+Review Data: {review_data}
+
 Guidelines:
 {prompt['guidelines']}
-Question: {prompt['question']}"""
+Vendor_question: {prompt['vendor_question']}"""
 
         # Model name
         model_name = "models/gemini-2.0-flash"

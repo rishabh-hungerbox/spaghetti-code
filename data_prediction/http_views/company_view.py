@@ -12,6 +12,7 @@ class CompanyView(APIView):
         data = []
         if env == 'prod':
             if os.getenv('APP_ENV') == 'local':
+                print('loaded prod db')
                 DATABASES['mysql']['HOST'] = os.getenv('DB_HOST_PROD')
                 DATABASES['mysql']['PORT'] = os.getenv('DB_PORT_PROD')
                 DATABASES['mysql']['USER'] = os.getenv('DB_USERNAME_PROD')
