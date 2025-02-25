@@ -25,7 +25,7 @@ class ImageAnalyzerView(APIView):
         temp_dir = tempfile.mkdtemp()
         temp_path = os.path.join(temp_dir, 'downloaded_image.jpg')  # Renamed to reflect download source
 
-        if not image_url or force_suggest:
+        if (not image_url) or bool(int(force_suggest)):
             suggestion = ImageGenerator.generate_image(product_name)
             
             return JsonResponse({
@@ -81,7 +81,9 @@ class ImageAnalyzerView(APIView):
         suggestion = []
         
         if rating <= 6:
-            suggestion = ImageGenerator.generate_image(product_name)            
+            suggestion = ImageGenerator.generate_image(product_name)   
+            
+        print('hi')         
 
         return JsonResponse({
             'image_url': image_url,  # Return the original image URL
